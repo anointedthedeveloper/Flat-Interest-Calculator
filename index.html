@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Loan Flat Interest Calculator</title>
+<meta name="description" content="Upload an Excel file of loans, calculate monthly flat-rate interest and repayments, and download the updated spreadsheet. Runs entirely in your browser.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><div class="wrap"><h1>Loan Flat Interest Calculator</h1><p>Monthly flat-rate interest on the original principal. Your file never leaves your browser.</p></div></header>
+<main class="wrap">
+  <section class="card">
+    <h2><span class="step">1</span> Upload Excel</h2>
+    <div id="drop" class="drop" tabindex="0">
+      <p><strong>Drag &amp; drop</strong> your Excel file here</p>
+      <p class="muted">.xlsx or .xls</p>
+      <button type="button" id="choose" class="btn secondary">Choose Excel File</button>
+      <input id="file" type="file" accept=".xlsx,.xls" hidden>
+    </div>
+    <p id="fileInfo" class="muted" hidden></p>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">2</span> Confirm settings</h2>
+    <div class="grid2">
+      <label>Monthly Flat Interest Rate (%)<input id="rate" type="number" step="0.01" min="0" max="100" value="5.00"></label>
+      <label>Loan Tenure (months)<input id="tenure" type="number" step="1" min="1" value="12"></label>
+    </div>
+    <label class="check"><input id="auto" type="checkbox"> Auto tenure from Start Date / End Date (per row)</label>
+    <p class="muted">Interest = Principal × Rate × Tenure. Total Repayment = Principal + Interest. Monthly Repayment = Total ÷ Tenure.</p>
+    <p id="settingsError" class="error" hidden></p>
+  </section>
+
+  <section class="card">
+    <h2><span class="step">3</span> Calculate</h2>
+    <button id="calc" class="btn" disabled>Calculate Loans</button>
+    <p id="error" class="error" hidden></p>
+  </section>
+
+  <div id="results" hidden>
+    <section class="card">
+      <h2><span class="step">4</span> Review results</h2>
+      <div id="cards" class="cards"></div>
+      <div id="invalid" class="invalid" hidden></div>
+      <div class="tablewrap"><table id="table"><thead><tr>
+        <th>Borrower / Row</th><th class="r">Principal</th><th class="r">Monthly Interest</th><th class="r">Total Interest</th><th class="r">Total Repayment</th><th class="r">Monthly Repayment</th><th class="r">Tenure</th><th class="r">Rate</th><th>Status</th>
+      </tr></thead><tbody></tbody></table></div>
+    </section>
+    <section class="card">
+      <h2><span class="step">5</span> Download</h2>
+      <button id="download" class="btn">Download Updated Excel</button>
+    </section>
+  </div>
+</main>
+<script src="vendor/xlsx.full.min.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
