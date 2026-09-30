@@ -156,3 +156,21 @@ export function summarize(rows) {
     avgMonthly: rows.length ? Math.round((sum('monthlyRepayment') / rows.length) * 100) / 100 : 0,
   };
 }
+
+/** First rows of the detected sheet as display text, for the pre-calculation preview. */
+export function previewSheet(XLSX, wb, limit = 8) {
+  const name = wb.SheetNames.find((n) => wb.Sheets[n]['!ref']) || wb.SheetNames[0];
+  const ws = wb.Sheets[name];
+  if (!ws || !ws['!ref']) return { headers: [], rows: [], total: 0 };
+  const range = XLSX.utils.decode_range(ws['!ref']);
+  const hr = Math.max(findHeaderRow(XLSX, ws, range), range.s.r);
+  const text = (r, c) => { const x = ws[XLSX.utils.encode_cell({ r, c })]; return x ? String(x.w ?? x.v ?? '') : ''; };
+  const headers = [];
+  for (let c = range.s.c; c <= range.e.c; c++) headers.push(text(hr, c));
+  const rows = [];
+  for (let r = hr + 1; r <= range.e.r; r++) {
+    const row = headers.map((_, i) => text(r, range.s.c + i));
+    if (row.some((v) => v.trim() !== '')) rows.push(row);
+  }
+  return { headers, rows: rows.slice(0, limit), total: rows.length };
+}

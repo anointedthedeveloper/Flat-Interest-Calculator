@@ -33,3 +33,26 @@ th{background:#f0f3f8;font-size:12px;text-transform:uppercase;letter-spacing:.04
 .r{text-align:right}
 tbody tr:last-child td{border-bottom:0}
 @media(max-width:640px){.grid2{grid-template-columns:1fr}.cards{grid-template-columns:1fr 1fr}}
+.ic{width:18px;height:18px;flex:none;vertical-align:-4px;fill:none}
+.big{width:40px;height:40px;color:var(--brand);margin-bottom:6px}
+.drop{transition:border-color .15s,background .15s}
+.drop:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.drop.over .dt{color:var(--brand)}
+.status{display:flex;align-items:center;gap:10px;margin-top:12px;padding:10px 12px;border-radius:8px;border:1px solid var(--line);background:#f7f9fc}
+.status svg{width:20px;height:20px;flex:none}
+.status.ok{background:#ecfdf3;border-color:#abefc6;color:var(--ok)}
+.status.err{background:var(--errbg);border-color:#fecdca;color:var(--err)}
+.status.busy svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status small{display:block;color:var(--muted);font-size:12px}
+.guide{border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-bottom:14px;background:#fafbfd}
+.guide summary{cursor:pointer;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--brand)}
+.guide p{margin:10px 0}
+.tablewrap.small{max-height:none;margin-bottom:10px}.tablewrap.small table{min-width:560px}
+.tablewrap.small td{white-space:normal}
+.link{background:none;border:0;color:var(--brand);font:inherit;font-weight:600;cursor:pointer;padding:0;display:inline-flex;gap:6px;align-items:center}
+.link:hover{text-decoration:underline}
+h3{font-size:14px;margin:16px 0 8px}h3 .muted{font-weight:400}
+#preview .tablewrap{max-height:280px}
+.btn{display:inline-flex;align-items:center;gap:8px}
+.btn svg{width:18px;height:18px}
