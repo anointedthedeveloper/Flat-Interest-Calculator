@@ -10,7 +10,7 @@ const nextPaint = () => new Promise((res) => requestAnimationFrame(() => setTime
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 let buffer = null, lastWb = null, lastOut = null, hasFile = false, isXlsx = true;
-let results = [], filtered = [], page = 0, showGross = false, showStatus = false;
+let results = [], filtered = [], page = 0, labels = {}, showGross = false, showStatus = false;
 
 const readWorkbook = (buf) => XLSX.read(buf, { type: 'array', cellNF: true, cellStyles: true, cellDates: false });
 
@@ -118,8 +118,8 @@ function render(out) {
     show(inv);
   } else show(inv, false);
 
-  results = out.rows; showGross = out.derivedCount > 0; showStatus = out.rows.some((r) => r.status);
-  $('thead').innerHTML = ['Borrower / Row', showGross && 'Gross Bank Payment', 'Principal', 'Monthly Interest', 'Total Interest', 'Total Repayment', 'Monthly Repayment', 'Tenure', showStatus && 'Status']
+  labels = out.labels; results = out.rows; showGross = out.derivedCount > 0; showStatus = out.rows.some((r) => r.status);
+  $('thead').innerHTML = ['Borrower / Row', showGross && labels.gross, labels.principal, 'Monthly Interest', (/total/i.test(labels.interest) ? labels.interest : `Total ${labels.interest}`), labels.total, labels.monthly, labels.tenure, showStatus && 'Status']
     .filter(Boolean).map((h, i) => `<th class="${i > 0 && h !== 'Status' ? 'r' : ''}">${h}</th>`).join('');
   $('q').value = ''; page = 0; applyFilter();
   show($('results'));
@@ -176,7 +176,7 @@ $('download').onclick = async () => {
   fail($('error'), ''); show($('dlNote'), false);
   if (isXlsx) {
     try { // .xlsx: change only the calculated cells inside the original file, so all formatting survives
-      const bytes = await patchXlsx(JSZip, buffer, lastOut.sheetName, lastOut.edits);
+      const bytes = await patchXlsx(JSZip, buffer, lastOut.sheetName, lastOut.edits, lastOut.widths);
       const problem = integrityProblem(bytes);
       if (problem) throw new Error(problem);
       save([bytes], name, xlsxType);
@@ -186,6 +186,9 @@ $('download').onclick = async () => {
       return;
     } catch (e) { console.warn('In-place save failed, using standard export', e); }
   }
+  const ws = lastWb.Sheets[lastOut.sheetName];
+  ws['!cols'] = ws['!cols'] || [];
+  for (const [c, wch] of Object.entries(lastOut.widths)) if (!((ws['!cols'][c]?.wch || 0) >= wch)) ws['!cols'][c] = { ...(ws['!cols'][c] || {}), wch };
   XLSX.writeFile(lastWb, name, { bookType: 'xlsx', cellStyles: true });
 };
 

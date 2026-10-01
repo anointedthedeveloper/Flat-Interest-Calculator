@@ -72,6 +72,7 @@ export function processWorkbook(XLSX, wb, settings) {
 
   // Add missing output columns at the end (existing columns are updated in place).
   let nextCol = range.e.c + 1;
+  const widths = {}; // column index -> characters needed so the numbers we write never show as ####
   const edits = []; // every cell we change, so an .xlsx can be patched in place (see patch.js)
   const dry = !!settings.dryRun; // dry run: analyse only, never touch the sheet
   const addCol = (key, title) => {
@@ -93,6 +94,8 @@ export function processWorkbook(XLSX, wb, settings) {
     ws[addr] = { ...(old || {}), t: 'n', v, z };
     delete ws[addr].w; delete ws[addr].f;
     edits.push({ addr, value: v });
+    const need = v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).length + 3;
+    const ci = cols[key]; if (!(widths[ci] >= need)) widths[ci] = need;
   };
 
   const rows = [], invalid = [];
@@ -163,7 +166,14 @@ export function processWorkbook(XLSX, wb, settings) {
 
   if (!dry) ws['!ref'] = XLSX.utils.encode_range({ s: range.s, e: { r: range.e.r, c: Math.max(range.e.c, nextCol - 1) } });
   if (!dry && ws['!cols']) for (let c = range.e.c + 1; c < nextCol; c++) ws['!cols'][c] = { wch: 18 };
-  return { sheetName, edits, detected, skipped, rows, invalid, hasTenorColumn, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
+  // Column names exactly as the user's file calls them (without any "(Column H + J)" notes), for the results table.
+  const label = (key, fallback) => {
+    const c = cols[key] === undefined ? null : ws[XLSX.utils.encode_cell({ r: hr, c: cols[key] })];
+    return (c && String(c.v).replace(/\s*\(.*?\)\s*/g, ' ').trim()) || fallback;
+  };
+  const labels = { gross: label('grossBank', 'Gross Payment'), principal: label('principal', 'Principal'), interest: label('interest', 'Interest'),
+    total: label('gross', 'Gross Loan'), monthly: label('monthly', 'EMI'), tenure: label('tenure', 'Tenor') };
+  return { sheetName, edits, widths, labels, detected, skipped, rows, invalid, hasTenorColumn, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
 }
 
 export function summarize(rows) {

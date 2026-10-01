@@ -24,7 +24,37 @@ function cellXml(addr, styleAttr, edit) {
   return `<c r="${addr}"${s}><v>${edit.value}</v></c>`;
 }
 
-export function patchSheetXml(xml, edits) {
+const colLetters = (n) => { let s = ''; while (n > 0) { s = String.fromCharCode(65 + ((n - 1) % 26)) + s; n = Math.floor((n - 1) / 26); } return s; };
+
+/** Widen (never narrow) columns that are too thin to show the numbers we wrote. widths: { zeroBasedColIndex: chars } */
+export function widenColumns(xml, widths) {
+  const targets = Object.entries(widths).map(([c, w]) => [Number(c) + 1, w]).sort((a, b) => a[0] - b[0]);
+  if (!targets.length) return xml;
+  const m = xml.match(/<cols>([\s\S]*?)<\/cols>/);
+  let defs = m ? (m[1].match(/<col\b[^>]*?\/>/g) || []).map((t) => ({ min: Number(attr(t, 'min')), max: Number(attr(t, 'max')), tag: t })) : [];
+  const withW = (d, min, max, width) => {
+    let t = d ? d.tag : '<col/>';
+    t = t.replace(/\smin="[^"]*"/, '').replace(/\smax="[^"]*"/, '').replace(/\swidth="[^"]*"/, '').replace(/\scustomWidth="[^"]*"/, '').replace(/\/>$/, '');
+    return { min, max, tag: `${t} min="${min}" max="${max}"${width != null ? ` width="${width}" customWidth="1"` : ''}/>` };
+  };
+  for (const [col, need] of targets) {
+    const i = defs.findIndex((d) => d.min <= col && col <= d.max);
+    if (i < 0) { defs.push(withW(null, col, col, need)); continue; }
+    const d = defs[i], cur = Number(attr(d.tag, 'width') || 0);
+    if (cur >= need) continue;
+    const pieces = [];
+    if (d.min < col) pieces.push({ ...d, tag: d.tag.replace(/\smax="[^"]*"/, ` max="${col - 1}"`), max: col - 1 });
+    pieces.push(withW(d, col, col, need));
+    if (d.max > col) pieces.push({ ...d, tag: d.tag.replace(/\smin="[^"]*"/, ` min="${col + 1}"`), min: col + 1 });
+    defs.splice(i, 1, ...pieces);
+  }
+  defs.sort((a, b) => a.min - b.min);
+  const block = `<cols>${defs.map((d) => d.tag).join('')}</cols>`;
+  if (m) return xml.replace(m[0], block);
+  return xml.replace('<sheetData', block + '<sheetData');
+}
+
+export function patchSheetXml(xml, edits, widths = {}) {
   let maxCol = 0, maxRow = 0;
   const byRow = new Map();
   for (const e of edits) {
@@ -69,16 +99,16 @@ export function patchSheetXml(xml, edits) {
     const letters = (n) => { let s = ''; while (n > 0) { s = String.fromCharCode(65 + ((n - 1) % 26)) + s; n = Math.floor((n - 1) / 26); } return s; };
     return full.replace(ref, `${m[1]}${m[2]}:${letters(endCol)}${endRow}`);
   });
-  return xml;
+  return widenColumns(xml, widths);
 }
 
 /** JSZip: the JSZip class. Returns a Uint8Array of the patched .xlsx. */
-export async function patchXlsx(JSZip, buffer, sheetName, edits) {
+export async function patchXlsx(JSZip, buffer, sheetName, edits, widths = {}) {
   const zip = await JSZip.loadAsync(buffer);
   const wbXml = await zip.file('xl/workbook.xml').async('string');
   const relsXml = await zip.file('xl/_rels/workbook.xml.rels').async('string');
   const path = sheetPath(wbXml, relsXml, sheetName);
   const xml = await zip.file(path).async('string');
-  zip.file(path, patchSheetXml(xml, edits));
+  zip.file(path, patchSheetXml(xml, edits, widths));
   return zip.generateAsync({ type: 'uint8array', compression: 'DEFLATE', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 }

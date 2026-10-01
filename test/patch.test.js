@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { patchSheetXml, patchXlsx } from '../js/patch.js';
+import { patchSheetXml, patchXlsx, widenColumns } from '../js/patch.js';
 import { processWorkbook } from '../js/sheet.js';
 const ctx = { console, TextEncoder, TextDecoder, setTimeout, clearTimeout, setImmediate, Promise, Uint8Array, ArrayBuffer }; ctx.self = ctx; ctx.window = ctx;
 vm.runInNewContext(fs.readFileSync(new URL('../vendor/xlsx.full.min.js', import.meta.url), 'utf8'), ctx);
@@ -24,7 +24,7 @@ test('real workbook: only the XXXX cells change, every other file in the package
   const wb = XLSX.read(buf, { type: 'buffer', cellNF: true, cellStyles: true });
   const out = processWorkbook(XLSX, wb, { rate: 5, deduction: 4 });
   assert.equal(out.edits.length, 20); // 4 rows x 5 calculated columns
-  const patched = await patchXlsx(JSZip, buf, out.sheetName, out.edits);
+  const patched = await patchXlsx(JSZip, buf, out.sheetName, out.edits, out.widths);
   const a = await JSZip.loadAsync(buf), b = await JSZip.loadAsync(patched);
   for (const name of Object.keys(a.files)) {
     if (a.files[name].dir || name === 'xl/worksheets/sheet1.xml') continue;
@@ -36,6 +36,14 @@ test('real workbook: only the XXXX cells change, every other file in the package
   assert.equal(rows[1]['Clients ID'], 451);
 });
 
+test('widenColumns widens only narrow columns and keeps the rest', () => {
+  const xml = '<worksheet><cols><col min="3" max="3" width="24" customWidth="1"/><col min="12" max="14" width="6.5" customWidth="1" style="2"/></cols><sheetData/></worksheet>';
+  const out = widenColumns(xml, { 13: 12, 2: 10 }); // N (idx 13) too narrow, C (idx 2) already wide enough
+  assert.match(out, /<col min="3" max="3" width="24" customWidth="1"\/>/);
+  assert.match(out, /<col min="12" max="13" width="6.5"/);
+  assert.match(out, /min="14" max="14" width="12" customWidth="1"/);
+});
+
 test('keep as is: nothing removed, empty and invalid rows untouched', async () => {
   const aoa = [['s/n', 'Name', 'Tenor', 'Balance B/F', 'Bank payment', 'Gross bank payment (column E/0.96)', 'Principal (column D + Column F)', 'Total Interest', 'Total debt', 'monthly EMI'],
     [1, 'A', 12, 0, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'], [], [2, 'BAD', 12, 0, 'abc', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'], ['note', 'footer text']];
@@ -43,7 +51,7 @@ test('keep as is: nothing removed, empty and invalid rows untouched', async () =
   const buf = XLSX.write(wb0, { type: 'buffer', bookType: 'xlsx' });
   const wb = XLSX.read(buf, { type: 'buffer' });
   const out = processWorkbook(XLSX, wb, { rate: 5, deduction: 4 });
-  const patched = await patchXlsx(JSZip, buf, out.sheetName, out.edits);
+  const patched = await patchXlsx(JSZip, buf, out.sheetName, out.edits, out.widths);
   const before = XLSX.read(buf, { type: 'buffer' }), after = XLSX.read(patched, { type: 'buffer' });
   assert.deepEqual(after.SheetNames, before.SheetNames);
   assert.equal(after.Sheets.Loans['!ref'], before.Sheets.Loans['!ref']);
