@@ -31,22 +31,14 @@
       <span class="mark"><svg class="ic"><use href="#i-calc"/></svg></span>
       <div><h1>Flat Interest Calculator</h1><p>Monthly flat-rate loan interest from your Excel sheet</p></div>
     </div>
-    <span class="private"><svg class="ic"><use href="#i-lock"/></svg> Processed in your browser. Nothing is uploaded.</span>
+    <span class="private"><svg class="ic"><use href="#i-lock"/></svg> Your file stays in your browser</span>
   </div>
 </header>
 
 <main class="wrap">
-  <ol class="steps" id="steps" aria-label="Progress">
-    <li data-s="1" class="on"><b>1</b><span>Upload</span></li>
-    <li data-s="2"><b>2</b><span>Settings</span></li>
-    <li data-s="3"><b>3</b><span>Calculate</span></li>
-    <li data-s="4"><b>4</b><span>Review</span></li>
-    <li data-s="5"><b>5</b><span>Download</span></li>
-  </ol>
-
   <div class="layout">
     <section class="card" id="uploadCard">
-      <h2>Upload Excel file</h2>
+      <h2>1. Upload your Excel file</h2>
 
       <div id="drop" class="drop" data-state="idle" tabindex="0" role="button" aria-label="Drop an Excel file here, or press Enter to choose one">
         <input id="file" type="file" accept=".xlsx,.xls" hidden>
@@ -54,7 +46,7 @@
         <div class="pane p-idle">
           <span class="dz-icon"><svg><use href="#i-upload"/></svg></span>
           <p class="dz-title"><strong>Drag and drop</strong> your Excel file here</p>
-          <p class="muted">.xlsx or .xls, any number of rows</p>
+          <p class="muted">.xlsx or .xls</p>
           <button type="button" class="btn secondary choose">Choose Excel File</button>
         </div>
 
@@ -62,7 +54,6 @@
           <span class="ripple"><i></i><i></i><i></i></span>
           <span class="dz-icon lift"><svg><use href="#i-download"/></svg></span>
           <p class="dz-title">Release to upload</p>
-          <p class="muted">Drop the file anywhere inside this box</p>
         </div>
 
         <div class="pane p-read">
@@ -88,8 +79,8 @@
         </div>
       </div>
 
-      <details class="guide" open>
-        <summary><svg class="ic"><use href="#i-info"/></svg> What should I upload?</summary>
+      <details class="guide">
+        <summary><svg class="ic"><use href="#i-info"/></svg> Which file format do I need? (view examples)</summary>
         <p>One Excel sheet (.xlsx or .xls), a header row in the first rows, then one row per loan. Use <b>either</b> layout. Column names can vary in capitals and spacing.</p>
 
         <h3>Layout A: you already have the principal</h3>
@@ -114,14 +105,12 @@
     </section>
 
     <aside class="card side" id="settingsCard">
-      <h2>Loan settings</h2>
-      <label><span class="lt">Monthly flat interest rate (%) <span class="tip" tabindex="0" role="img" aria-label="Percentage charged on the original principal every month. 5 means 5% a month, the same amount every month." data-tip="Percentage charged on the original principal every month. 5 means 5% a month, the same amount every month."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="rate" type="number" step="0.01" min="0" max="100" value="5.00" inputmode="decimal"><span class="hint">Charged every month on the original principal, not the reducing balance.</span></label>
-      <label><span class="lt">Loan tenure (months) <span class="tip" tabindex="0" role="img" aria-label="Number of months the loan runs. Total interest = monthly interest x tenure." data-tip="Number of months the loan runs. Total interest = monthly interest x tenure."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="tenure" type="number" step="1" min="1" value="12" inputmode="numeric"><span class="hint">How many months the loan runs. Used for every row unless an option below says otherwise.</span></label>
-      <div class="opt-row" id="fileTenorRow" hidden><label id="fileTenorWrap" class="check"><input id="fileTenor" type="checkbox" checked> Use each row's Tenor from the file (blank rows use the tenure above)</label><span class="tip" tabindex="0" role="img" aria-label="Reads the Tenor column on each row, so different clients can have different tenors. A blank Tenor uses the tenure above." data-tip="Reads the Tenor column on each row, so different clients can have different tenors. A blank Tenor uses the tenure above."><svg class="ic"><use href="#i-info"/></svg></span></div>
-      <div class="opt-row"><label class="check"><input id="auto" type="checkbox"> Auto tenure from Start Date and End date</label><span class="tip" tabindex="0" role="img" aria-label="Works the tenure out from each row's Start Date and End date instead. Needs both columns in your file." data-tip="Works the tenure out from each row's Start Date and End date instead. Needs both columns in your file."><svg class="ic"><use href="#i-info"/></svg></span></div>
-      <div class="opt-row"><label class="check"><input id="extra" type="checkbox"> Also add Monthly Flat Rate, Monthly Interest and Loan Tenure columns (off by default: your file is kept as is)</label><span class="tip" tabindex="0" role="img" aria-label="Adds three more columns at the end of the file. Leave it off to get your sheet back exactly as you uploaded it, with only the empty calculation cells filled." data-tip="Adds three more columns at the end of the file. Leave it off to get your sheet back exactly as you uploaded it, with only the empty calculation cells filled."><svg class="ic"><use href="#i-info"/></svg></span></div>
-      <label><span class="lt">Bank deduction (%) <span class="tip" tabindex="0" role="img" aria-label="Bank payments arrive after this deduction. Gross bank payment = Bank payment / (1 - deduction). 4% means divide by 0.96." data-tip="Bank payments arrive after this deduction. Gross bank payment = Bank payment / (1 - deduction). 4% means divide by 0.96."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="deduction" type="number" step="0.01" min="0" max="99" value="4" inputmode="decimal"><span class="hint">Only used when principal is worked out from Bank payment (4% means divide by 0.96).</span></label>
-      <p class="formula">Interest = Principal x Rate x Tenure<br>Total = Principal + Interest<br>Monthly = Total / Tenure</p>
+      <h2>2. Loan settings</h2>
+      <label><span class="lt">Monthly flat interest rate (%) <span class="tip" tabindex="0" role="img" aria-label="Percentage charged on the original principal every month. 5 means 5% a month, the same amount every month." data-tip="Percentage charged on the original principal every month. 5 means 5% a month, the same amount every month."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="rate" type="number" step="0.01" min="0" max="100" value="5.00" inputmode="decimal"></label>
+      <label><span class="lt">Loan tenure (months) <span class="tip" tabindex="0" role="img" aria-label="Number of months the loan runs. Total interest = monthly interest x tenure." data-tip="Number of months the loan runs. Total interest = monthly interest x tenure."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="tenure" type="number" step="1" min="1" value="12" inputmode="numeric"></label>
+      <label id="srcRow" hidden><span class="lt">Take tenure from <span class="tip" tabindex="0" role="img" aria-label="Choose where each loan gets its number of months. Rows with no value use the tenure above." data-tip="Choose where each loan gets its number of months. Rows with no value use the tenure above."><svg class="ic"><use href="#i-info"/></svg></span></span>
+        <select id="tsrc"><option value="fixed">The number above</option></select></label>
+      <label id="dedRow" hidden><span class="lt">Bank deduction (%) <span class="tip" tabindex="0" role="img" aria-label="Bank payments arrive after this deduction. Gross bank payment = Bank payment / (1 - deduction). 4% means divide by 0.96." data-tip="Bank payments arrive after this deduction. Gross bank payment = Bank payment / (1 - deduction). 4% means divide by 0.96."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="deduction" type="number" step="0.01" min="0" max="99" value="4" inputmode="decimal"></label>
       <p id="settingsError" class="error" hidden></p>
       <button id="calc" class="btn block" disabled><svg class="ic"><use href="#i-calc"/></svg> Calculate Loans</button>
       <p id="error" class="error" hidden></p>
@@ -135,7 +124,7 @@
 
   <div id="results" hidden>
     <section class="card">
-      <h2>Results</h2>
+      <h2>3. Results</h2>
       <div id="cards" class="cards"></div>
       <div id="invalid" class="invalid" hidden></div>
       <div class="tools">
@@ -151,7 +140,7 @@
       </div>
     </section>
     <section class="card dl">
-      <div><h2>Download</h2><p class="muted">Your file comes back exactly as uploaded: only the cells being calculated are changed, and the new values are real numbers you can still use in Excel.</p><p id="dlNote" class="muted ok" hidden></p><p id="xlsNote" class="muted" hidden>Old .xls files are saved as .xlsx and lose cell colours and fonts. Upload an .xlsx to keep the formatting exactly.</p></div>
+      <div><h2>4. Download</h2><p class="muted">Your file comes back exactly as uploaded. Only the cells being calculated change.</p><p id="dlNote" class="muted ok" hidden></p><p id="xlsNote" class="muted" hidden>Old .xls files are saved as .xlsx and lose cell colours and fonts. Upload an .xlsx to keep the formatting exactly.</p></div>
       <button id="download" class="btn"><svg class="ic"><use href="#i-download"/></svg> Download Updated Excel</button>
     </section>
   </div>

@@ -10,18 +10,9 @@ const nextPaint = () => new Promise((res) => requestAnimationFrame(() => setTime
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
 let buffer = null, lastWb = null, lastOut = null, hasFile = false, isXlsx = true;
-let results = [], filtered = [], page = 0, showGross = false;
+let results = [], filtered = [], page = 0, showGross = false, showStatus = false;
 
 const readWorkbook = (buf) => XLSX.read(buf, { type: 'array', cellNF: true, cellStyles: true, cellDates: false });
-
-/* ---------- stepper ---------- */
-function setStep(n) {
-  document.querySelectorAll('#steps li').forEach((li) => {
-    const s = Number(li.dataset.s);
-    li.classList.toggle('done', s < n);
-    li.classList.toggle('on', s === n);
-  });
-}
 
 /* ---------- drop zone states: idle | over | reading | done | error ---------- */
 const drop = $('drop');
@@ -60,7 +51,7 @@ const fmtSize = (n) => (n < 1048576 ? Math.max(1, Math.round(n / 1024)) + ' KB' 
 async function loadFile(f) {
   fail($('error'), ''); fail($('settingsError'), '');
   show($('results'), false); show($('preview'), false);
-  hasFile = false; $('calc').disabled = true; setStep(1);
+  hasFile = false; $('calc').disabled = true;
   if (!/\.(xlsx|xls)$/i.test(f.name)) { setDrop('error', { name: f.name, msg: 'Unsupported file type. Please upload an .xlsx or .xls file.' }); return; }
   isXlsx = /\.xlsx$/i.test(f.name);
   setDrop('reading', { name: f.name });
@@ -76,14 +67,12 @@ async function loadFile(f) {
     hasFile = true;
     const n = probe.detected;
     setDrop('done', { name: f.name, meta: `${fmtSize(f.size)}, ${n.toLocaleString()} loan record${n === 1 ? '' : 's'} detected in "${probe.sheetName}"` });
-    show($('fileTenorRow'), probe.hasTenorColumn);
-    $('fileTenor').checked = true; syncTenure();
+    setupSettings(probe);
     $('previewTable').tHead.innerHTML = '<tr>' + pv.headers.map((h) => `<th>${esc(h)}</th>`).join('') + '</tr>';
     $('previewTable').tBodies[0].innerHTML = pv.rows.map((r) => '<tr>' + r.map((v) => `<td>${esc(v)}</td>`).join('') + '</tr>').join('');
     $('previewNote').textContent = `first ${pv.rows.length} of ${pv.total.toLocaleString()} rows`;
     show($('preview'));
     $('calc').disabled = false;
-    setStep(2);
   } catch (e) {
     buffer = null;
     setDrop('error', { name: f.name, msg: e.message || 'Could not read this Excel file.' });
@@ -91,28 +80,35 @@ async function loadFile(f) {
 }
 
 /* ---------- settings ---------- */
-const syncTenure = () => { $('tenure').disabled = $('auto').checked || (!$('fileTenorRow').hidden && $('fileTenor').checked); };
-$('auto').onchange = syncTenure;
-$('fileTenor').onchange = syncTenure;
+function setupSettings(probe) {
+  const opts = [['fixed', 'The number above']];
+  if (probe.hasTenorColumn) opts.unshift(['column', 'Tenor column in the file']);
+  if (probe.hasDates) opts.push(['dates', 'Start Date and End date']);
+  $('tsrc').innerHTML = opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+  show($('srcRow'), opts.length > 1);
+  show($('dedRow'), probe.usesBank);
+  syncTenure();
+}
+const syncTenure = () => { $('tenure').disabled = $('tsrc').value === 'dates'; };
+$('tsrc').onchange = syncTenure;
 
 $('calc').onclick = async () => {
   fail($('settingsError'), ''); fail($('error'), '');
-  const rate = parseFloat($('rate').value), tenure = Number($('tenure').value), auto = $('auto').checked;
-  const deduction = parseFloat($('deduction').value);
-  const useFileTenor = !$('fileTenorRow').hidden && $('fileTenor').checked;
+  const rate = parseFloat($('rate').value), tenure = Number($('tenure').value), auto = $('tsrc').value === 'dates';
+  const deduction = $('dedRow').hidden ? 4 : parseFloat($('deduction').value);
+  const useFileTenor = $('tsrc').value === 'column';
   const err = validateSettings(rate, tenure, auto, deduction);
   if (err) { fail($('settingsError'), err); return; }
-  const btn = $('calc'); btn.disabled = true; setStep(3);
+  const btn = $('calc'); btn.disabled = true;
   const label = btn.innerHTML; btn.textContent = 'Calculating...';
   await nextPaint();
   try {
     lastWb = readWorkbook(buffer); // fresh copy every run
-    const out = processWorkbook(XLSX, lastWb, { rate, tenure, autoTenure: auto, deduction, useFileTenor, extraColumns: $('extra').checked });
+    const out = processWorkbook(XLSX, lastWb, { rate, tenure, autoTenure: auto, deduction, useFileTenor });
     lastOut = out;
     render(out);
     show($('xlsNote'), !isXlsx);
-    setStep(5);
-  } catch (e) { fail($('error'), e.message); show($('results'), false); setStep(2); }
+  } catch (e) { fail($('error'), e.message); show($('results'), false); }
   btn.innerHTML = label; btn.disabled = false;
 };
 
@@ -133,8 +129,8 @@ function render(out) {
     show(inv);
   } else show(inv, false);
 
-  results = out.rows; showGross = out.derivedCount > 0;
-  $('thead').innerHTML = ['Borrower / Row', showGross && 'Gross Bank Payment', 'Principal', 'Monthly Interest', 'Total Interest', 'Total Repayment', 'Monthly Repayment', 'Tenure', 'Rate', 'Status']
+  results = out.rows; showGross = out.derivedCount > 0; showStatus = out.rows.some((r) => r.status);
+  $('thead').innerHTML = ['Borrower / Row', showGross && 'Gross Bank Payment', 'Principal', 'Monthly Interest', 'Total Interest', 'Total Repayment', 'Monthly Repayment', 'Tenure', showStatus && 'Status']
     .filter(Boolean).map((h, i) => `<th class="${i > 0 && h !== 'Status' ? 'r' : ''}">${h}</th>`).join('');
   $('q').value = ''; page = 0; applyFilter();
   show($('results'));
@@ -153,7 +149,7 @@ function drawPage() {
   $('table').tBodies[0].innerHTML = slice.map((r) => {
     const money = (v) => `<td class="r">${v == null ? '' : formatNaira(v)}</td>`;
     return `<tr><td>${esc(r.label)}</td>${showGross ? money(r.gross) : ''}${[r.principal, r.monthlyInterest, r.totalInterest, r.totalRepayment, r.monthlyRepayment].map(money).join('')}` +
-      `<td class="r">${r.tenure} mo</td><td class="r">${r.rate}%</td><td>${esc(r.status)}</td></tr>`;
+      `<td class="r">${r.tenure} mo</td>${showStatus ? `<td>${esc(r.status)}</td>` : ''}</tr>`;
   }).join('') || `<tr><td colspan="10" class="muted">No matching rows.</td></tr>`;
   const pages = Math.max(1, Math.ceil(filtered.length / size));
   $('range').textContent = filtered.length ? `Showing ${(start + 1).toLocaleString()}-${(start + slice.length).toLocaleString()} of ${filtered.length.toLocaleString()}` : '0 rows';

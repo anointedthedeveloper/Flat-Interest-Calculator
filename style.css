@@ -15,13 +15,6 @@ svg{display:block}
 .top h1{margin:0;font-size:18px;line-height:1.2}.top p{margin:2px 0 0;color:var(--muted);font-size:13px}
 .private{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ok);background:var(--okbg);border-radius:999px;padding:5px 12px}
 
-/* stepper */
-.steps{list-style:none;display:flex;gap:6px;margin:0 0 18px;padding:0}
-.steps li{flex:1;display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);border-top:3px solid var(--line);padding-top:8px;transition:border-color .3s,color .3s}
-.steps b{width:22px;height:22px;border-radius:50%;background:var(--line);display:grid;place-items:center;font-size:12px;transition:background .3s,color .3s}
-.steps li.on,.steps li.done{color:var(--ink);border-color:var(--brand)}
-.steps li.on b,.steps li.done b{background:var(--brand);color:#fff}
-
 /* layout */
 .layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr);gap:16px;align-items:start}
 .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px}
@@ -123,7 +116,7 @@ tbody tr:hover td{background:#f8fafd}
 tbody tr:last-child td{border-bottom:0}
 .r{text-align:right;font-variant-numeric:tabular-nums}
 .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
-.stat{border:1px solid var(--line);border-radius:10px;padding:12px 14px;animation:paneIn .4s both}
+.stat{border:1px solid var(--line);border-radius:10px;padding:12px 14px}
 .stat span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .stat b{font-size:19px;font-variant-numeric:tabular-nums}
 .invalid{background:var(--errbg);border:1px solid #fecdca;border-radius:10px;padding:12px 14px;margin-bottom:16px;color:var(--err)}
@@ -138,9 +131,9 @@ tbody tr:last-child td{border-bottom:0}
 .pager div{display:flex;align-items:center;gap:10px}
 .dl{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap}
 .dl h2{margin-bottom:4px}.dl p{margin:0;max-width:560px}
-#results,#preview{animation:paneIn .4s both}
 
-@media(max-width:860px){.layout{grid-template-columns:1fr}.side{position:static}.cards{grid-template-columns:1fr 1fr}.steps span{display:none}}
+
+@media(max-width:860px){.layout{grid-template-columns:1fr}.side{position:static}.cards{grid-template-columns:1fr 1fr}}
 @media(max-width:480px){.cards{grid-template-columns:1fr}.private{font-size:12px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition:none!important}}
 .layout{margin-bottom:16px}
@@ -161,3 +154,22 @@ label .hint{margin-top:3px}
 .tip:hover::after,.tip:focus::after{opacity:1;transform:none}
 .lt .tip::after{left:-8px;right:auto}
 .muted.ok{color:var(--ok);font-weight:600}
+
+/* calmer, simpler pass */
+body{background:#f6f7f9}
+.top{padding:12px 0;margin-bottom:18px}
+.private{background:none;color:var(--muted);padding:0;font-size:13px}
+.card{border-radius:10px;padding:22px;margin-bottom:16px}
+h2{font-size:17px;margin:0 0 16px}
+.drop{min-height:210px;border-radius:10px;background:#fbfcfd}
+.guide{border:0;background:none;padding:0;margin-top:14px}
+.guide summary{font-weight:500;font-size:14px;list-style:none}
+.guide summary::-webkit-details-marker{display:none}
+.guide[open] summary{margin-bottom:6px}
+.guide .tablewrap{border-radius:8px}
+label{margin-bottom:16px}
+.side label:last-of-type{margin-bottom:16px}
+.tools{margin-bottom:12px}
+.cards{gap:10px}.stat{background:#fafbfc}
+.stat b{font-size:18px}
+select{font-weight:400}

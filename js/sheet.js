@@ -180,7 +180,7 @@ export function processWorkbook(XLSX, wb, settings) {
 
   if (!dry) ws['!ref'] = XLSX.utils.encode_range({ s: range.s, e: { r: range.e.r, c: Math.max(range.e.c, nextCol - 1) } });
   if (!dry && ws['!cols']) for (let c = range.e.c + 1; c < nextCol; c++) ws['!cols'][c] = { wch: 18 };
-  return { sheetName, edits, detected, rows, invalid, hasTenorColumn, derivedCount: rows.filter((r) => r.derived).length };
+  return { sheetName, edits, detected, rows, invalid, hasTenorColumn, hasDates: cols.start !== undefined && cols.end !== undefined, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
 }
 
 export function summarize(rows) {
