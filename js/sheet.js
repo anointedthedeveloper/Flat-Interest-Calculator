@@ -81,10 +81,11 @@ export function processWorkbook(XLSX, wb, settings) {
 
   // Add missing output columns at the end (existing columns are updated in place).
   let nextCol = range.e.c + 1;
+  const dry = !!settings.dryRun; // dry run: analyse only, never touch the sheet
   const addCol = (key, title) => {
     if (cols[key] !== undefined) return;
     cols[key] = nextCol++;
-    ws[XLSX.utils.encode_cell({ r: hr, c: cols[key] })] = { t: 's', v: title };
+    if (!dry) ws[XLSX.utils.encode_cell({ r: hr, c: cols[key] })] = { t: 's', v: title };
   };
   addCol('principal', 'Principal');
   addCol('rate', 'Monthly Flat Rate');
@@ -95,6 +96,7 @@ export function processWorkbook(XLSX, wb, settings) {
   addCol('monthly', 'Monthly repayment');
 
   const setNum = (r, key, v, fmt) => {
+    if (dry) return;
     const addr = XLSX.utils.encode_cell({ r, c: cols[key] });
     const old = ws[addr];
     const z = old && old.z && old.z !== 'General' ? old.z : fmt;
@@ -168,11 +170,11 @@ export function processWorkbook(XLSX, wb, settings) {
     setNum(r, 'interest', res.totalInterest, MONEY_FMT);
     setNum(r, 'gross', res.totalRepayment, MONEY_FMT);
     setNum(r, 'monthly', res.monthlyRepayment, MONEY_FMT);
-    rows.push({ row: r + 1, label, status, derived, ...res });
+    rows.push({ row: r + 1, label, status, derived, gross, ...res });
   }
 
-  ws['!ref'] = XLSX.utils.encode_range({ s: range.s, e: { r: range.e.r, c: Math.max(range.e.c, nextCol - 1) } });
-  if (ws['!cols']) for (let c = range.e.c + 1; c < nextCol; c++) ws['!cols'][c] = { wch: 18 };
+  if (!dry) ws['!ref'] = XLSX.utils.encode_range({ s: range.s, e: { r: range.e.r, c: Math.max(range.e.c, nextCol - 1) } });
+  if (!dry && ws['!cols']) for (let c = range.e.c + 1; c < nextCol; c++) ws['!cols'][c] = { wch: 18 };
   return { sheetName, detected, rows, invalid, hasTenorColumn, derivedCount: rows.filter((r) => r.derived).length };
 }
 
