@@ -88,15 +88,17 @@ export function processWorkbook(XLSX, wb, settings) {
     if (!dry) ws[XLSX.utils.encode_cell({ r: hr, c: cols[key] })] = { t: 's', v: title };
   };
   addCol('principal', 'Principal');
-  addCol('rate', 'Monthly Flat Rate');
-  addCol('monthlyInterest', 'Monthly Interest');
-  addCol('tenure', 'Loan Tenure');
+  if (settings.extraColumns) { // optional: only when the user asks for them
+    addCol('rate', 'Monthly Flat Rate');
+    addCol('monthlyInterest', 'Monthly Interest');
+    addCol('tenure', 'Loan Tenure');
+  }
   addCol('interest', 'Interest');
   addCol('gross', 'Gross Loan');
   addCol('monthly', 'Monthly repayment');
 
   const setNum = (r, key, v, fmt) => {
-    if (dry) return;
+    if (dry || cols[key] === undefined) return;
     const addr = XLSX.utils.encode_cell({ r, c: cols[key] });
     const old = ws[addr];
     const z = old && old.z && old.z !== 'General' ? old.z : fmt;
@@ -163,7 +165,7 @@ export function processWorkbook(XLSX, wb, settings) {
 
     const res = calculateLoan(principal, settings.rate, tenure);
     if (derived && cols.grossBank !== undefined) setNum(r, 'grossBank', gross, MONEY_FMT);
-    setNum(r, 'principal', res.principal, MONEY_FMT);
+    if (derived) setNum(r, 'principal', res.principal, MONEY_FMT); // leave a supplied principal exactly as it was
     setNum(r, 'rate', res.rate / 100, '0.00%');
     setNum(r, 'monthlyInterest', res.monthlyInterest, MONEY_FMT);
     setNum(r, 'tenure', res.tenure, '0');

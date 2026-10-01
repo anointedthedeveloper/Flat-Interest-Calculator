@@ -85,30 +85,38 @@
         </div>
       </div>
 
-      <details class="guide">
+      <details class="guide" open>
         <summary><svg class="ic"><use href="#i-info"/></svg> What should I upload?</summary>
-        <p>An Excel file with one row per loan and a header row. Two layouts are supported:</p>
-        <div class="tablewrap small"><table>
-          <thead><tr><th>Layout</th><th>Columns</th><th>How the principal is found</th></tr></thead>
-          <tbody>
-            <tr><td><b>A. New Principal</b></td><td>New Principal (required)</td><td>Read from the New Principal column</td></tr>
-            <tr><td><b>B. Bank payment</b></td><td>Bank payment (required), Balance B/F, Tenor</td><td>Principal = Balance B/F + Bank payment / 0.96. Placeholder cells such as "XXXX" are filled in: Gross bank payment, Principal, Total Interest, Total debt, monthly EMI</td></tr>
-          </tbody>
+        <p>One Excel sheet (.xlsx or .xls), a header row in the first rows, then one row per loan. Use <b>either</b> layout. Column names can vary in capitals and spacing.</p>
+
+        <h3>Layout A: you already have the principal</h3>
+        <div class="tablewrap small"><table class="ex">
+          <thead><tr><th>Payment Date</th><th>Bal. restruc</th><th>Bank payment</th><th>Gross bank paym</th><th class="req">New Principal</th><th>Interest</th><th>Gross Loan</th><th>Monthly repayment</th><th>Start Date</th><th>End date</th><th>Status</th></tr></thead>
+          <tbody><tr><td>01-Sep-26</td><td></td><td>144,000</td><td>150,000</td><td>150,000</td><td></td><td></td><td></td><td>1-Oct-2026</td><td>30-Sep-2027</td><td>RENEWAL</td></tr></tbody>
         </table></div>
-        <p class="muted">All other columns (Name, Ministry, IPPIS NO, Payment Date, Status, and so on) are kept as they are.</p>
+        <p class="muted">Only <b>New Principal</b> is required. Interest, Gross Loan and Monthly repayment are filled in (added at the end if missing).</p>
+
+        <h3>Layout B: principal comes from the bank payment</h3>
+        <div class="tablewrap small"><table class="ex">
+          <thead><tr><th>s/n</th><th>Clients ID</th><th>Clients Name</th><th>IPPIS NO</th><th>AAA MINISTRY2</th><th>Tenor</th><th>Payment Date</th><th>Balance B/F</th><th class="req">Bank payment</th><th>Gross bank payment (column I/0.96)</th><th>Principal (column H + Column J)</th><th>Total Interest</th><th>Total debt (Columns K + L)</th><th>monthly EMI</th></tr></thead>
+          <tbody><tr><td>1</td><td>156</td><td>AUDU DANJUMA</td><td>86679</td><td>OSGF</td><td>12</td><td>1-Sep-26</td><td>0</td><td>144,000</td><td>XXXX</td><td>XXXX</td><td>XXXX</td><td>XXXX</td><td>XXXX</td></tr></tbody>
+        </table></div>
+        <p class="muted">Only <b>Bank payment</b> is required. Gross bank payment = Bank payment / 0.96. Principal = Balance B/F + Gross bank payment. The five XXXX columns are replaced with the calculated numbers. Every other column comes back exactly as uploaded.</p>
+
         <div class="links">
-          <button type="button" id="sample" class="link"><svg class="ic"><use href="#i-download"/></svg> Sample: New Principal layout</button>
-          <button type="button" id="sample2" class="link"><svg class="ic"><use href="#i-download"/></svg> Sample: Bank payment layout</button>
+          <button type="button" id="sample" class="link"><svg class="ic"><use href="#i-download"/></svg> Sample file: Layout A</button>
+          <button type="button" id="sample2" class="link"><svg class="ic"><use href="#i-download"/></svg> Sample file: Layout B</button>
         </div>
       </details>
     </section>
 
     <aside class="card side" id="settingsCard">
       <h2>Loan settings</h2>
-      <label>Monthly flat interest rate (%)<input id="rate" type="number" step="0.01" min="0" max="100" value="5.00" inputmode="decimal"></label>
-      <label>Loan tenure (months)<input id="tenure" type="number" step="1" min="1" value="12" inputmode="numeric"></label>
+      <label>Monthly flat interest rate (%)<input id="rate" type="number" step="0.01" min="0" max="100" value="5.00" inputmode="decimal"><span class="hint">Charged every month on the original principal, not the reducing balance.</span></label>
+      <label>Loan tenure (months)<input id="tenure" type="number" step="1" min="1" value="12" inputmode="numeric"><span class="hint">How many months the loan runs. Used for every row unless an option below says otherwise.</span></label>
       <label id="fileTenorWrap" class="check" hidden><input id="fileTenor" type="checkbox" checked> Use each row's Tenor from the file (blank rows use the tenure above)</label>
       <label class="check"><input id="auto" type="checkbox"> Auto tenure from Start Date and End date</label>
+      <label class="check"><input id="extra" type="checkbox"> Also add Monthly Flat Rate, Monthly Interest and Loan Tenure columns to the downloaded file (off keeps your sheet exactly as it is)</label>
       <label>Bank deduction (%)<input id="deduction" type="number" step="0.01" min="0" max="99" value="4" inputmode="decimal"><span class="hint">Only used when principal is worked out from Bank payment (4% means divide by 0.96).</span></label>
       <p class="formula">Interest = Principal x Rate x Tenure<br>Total = Principal + Interest<br>Monthly = Total / Tenure</p>
       <p id="settingsError" class="error" hidden></p>

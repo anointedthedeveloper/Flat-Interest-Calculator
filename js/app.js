@@ -105,7 +105,7 @@ $('calc').onclick = async () => {
   await nextPaint();
   try {
     lastWb = readWorkbook(buffer); // fresh copy every run
-    const out = processWorkbook(XLSX, lastWb, { rate, tenure, autoTenure: auto, deduction, useFileTenor });
+    const out = processWorkbook(XLSX, lastWb, { rate, tenure, autoTenure: auto, deduction, useFileTenor, extraColumns: $('extra').checked });
     render(out);
     setStep(5);
   } catch (e) { fail($('error'), e.message); show($('results'), false); setStep(2); }

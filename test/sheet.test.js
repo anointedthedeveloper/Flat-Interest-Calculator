@@ -22,7 +22,7 @@ test('calculates, updates existing columns, flags bad rows', () => {
     [],
     ['04-Sep-26', 165375, 144000, 150000, 315375, 0, 0, 0, '1-Oct-2026', '30-Sep-2027', 'TOP UP'],
     ['x', '', '', '', 'abc'], ['x', '', '', '', -5], ['x', '', '', '', '']]);
-  const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, autoTenure: false });
+  const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, autoTenure: false, extraColumns: true });
   assert.equal(out.rows.length, 2);
   assert.equal(out.invalid.length, 3);
   const rows = XLSX.utils.sheet_to_json(wb.Sheets.Loans);
@@ -62,4 +62,15 @@ test('bank payment layout derives principal and fills placeholders', () => {
   assert.equal(rows[1]['Total debt (Columns I + J)'], 504600);
   assert.equal(rows[1]['monthly EMI'], 42050);
   assert.equal(Object.keys(rows[0]).filter((k) => /^tenor|tenure/i.test(k)).length, 1);
+});
+
+test('no extra columns by default: output columns equal input columns', () => {
+  const wb = build([
+    ['s/n', 'Clients ID', 'Clients Name', 'Tenor', 'Balance B/F', 'Bank payment', 'Gross bank payment (column I/0.96)', 'Principal (column H + Column J)', 'Total Interest ', 'Total debt (Columns K + L)', 'monthly EMI'],
+    [1, 156, 'AUDU', 12, 0, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX']]);
+  const before = XLSX.utils.sheet_to_json(wb.Sheets.Loans, { header: 1 })[0];
+  processWorkbook(XLSX, wb, { rate: 5, tenure: 12, deduction: 4, useFileTenor: true });
+  const after = XLSX.utils.sheet_to_json(wb.Sheets.Loans, { header: 1 })[0];
+  assert.deepEqual(after, before);
+  assert.equal(XLSX.utils.sheet_to_json(wb.Sheets.Loans)[0]['Clients ID'], 156);
 });
