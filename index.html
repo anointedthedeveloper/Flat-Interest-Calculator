@@ -95,15 +95,25 @@
   <section class="card guide-card">
       <details class="guide">
         <summary><svg class="ic"><use href="#i-info"/></svg> Which file format do I need?</summary>
-        <p>One sheet with a header row, then one row per loan, laid out like this. Column names can differ slightly in capitals and spacing.</p>
-        <div class="tablewrap small"><table class="ex"><thead><tr><th class="">S/N</th><th class="">Clients ID</th><th class="">Clients Name</th><th class="">IPPIS NO</th><th class="">MINISTRY</th><th class="req">Tenor</th><th class="">Payment Date</th><th class="">Balance B/Fwd</th><th class="req">Bank payment</th><th class="calc">Gross Payment (Column I/.96)</th><th class="calc">Principal (H+J)</th><th class="calc">Interest</th><th class="calc">Gross Loan (K+L)</th><th class="calc">EMI</th><th class="">Start Date</th><th class="">End date</th><th class="">Status</th></tr></thead><tbody><tr><td class="">1</td><td class="">551</td><td class="">OKOH ABBA EMMANUEL</td><td class="">434590</td><td class="">OSGF</td><td class="">12</td><td class="">1-Sep-26</td><td class="">36,012.38</td><td class="">96,000</td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="">1-Oct-26</td><td class="">30-Sep-27</td><td class="">TOP UP</td></tr><tr><td class="">2</td><td class="">637</td><td class="">ABURU MARIA</td><td class="">480210</td><td class="">LABOUR</td><td class="">6</td><td class="">1-Sep-26</td><td class=""></td><td class="">240,000</td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="">1-Oct-26</td><td class="">30-Sep-27</td><td class="">NEW</td></tr></tbody></table></div>
-        <p class="legend"><i class="lg req"></i> required <i class="lg calc"></i> calculated for you, leave blank</p>
+        <p>One sheet, headers in the first row, one row per loan. Fill in the white columns and leave the shaded ones empty: they are calculated for you. Column names can differ slightly in capitals and spacing.</p>
+        <div class="xl" aria-label="Example spreadsheet">
+          <div class="xl-scroll"><table class="grid">
+            <thead><tr><th class="corner"></th><th class="cl">A</th><th class="cl">B</th><th class="cl">C</th><th class="cl">D</th><th class="cl">E</th><th class="cl">F</th><th class="cl">G</th><th class="cl">H</th><th class="cl">I</th><th class="cl">J</th><th class="cl">K</th><th class="cl">L</th><th class="cl">M</th><th class="cl">N</th><th class="cl">O</th><th class="cl">P</th><th class="cl">Q</th></tr></thead>
+            <tbody><tr><th class="rn">1</th><td class="hd ">S/N</td><td class="hd ">Clients ID</td><td class="hd ">Clients Name</td><td class="hd ">IPPIS NO</td><td class="hd ">MINISTRY</td><td class="hd req">Tenor</td><td class="hd ">Payment Date</td><td class="hd ">Balance B/Fwd</td><td class="hd req">Bank payment</td><td class="hd calc">Gross Payment</td><td class="hd calc">Principal</td><td class="hd calc">Interest</td><td class="hd calc">Gross Loan</td><td class="hd calc">EMI</td><td class="hd ">Start Date</td><td class="hd ">End date</td><td class="hd ">Status</td></tr><tr><th class="rn">2</th><td class="">1</td><td class="">551</td><td class="">OKOH ABBA EMMANUEL</td><td class="">434590</td><td class="">OSGF</td><td class=" num">12</td><td class="">1-Sep-26</td><td class=" num">36,012.38</td><td class=" num">96,000.00</td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="">1-Oct-26</td><td class="">30-Sep-27</td><td class="">TOP UP</td></tr><tr><th class="rn">3</th><td class="">2</td><td class="">637</td><td class="">ABURU MARIA</td><td class="">480210</td><td class="">LABOUR</td><td class=" num">6</td><td class="">1-Sep-26</td><td class=" num"></td><td class=" num">240,000.00</td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="">1-Oct-26</td><td class="">30-Sep-27</td><td class="">NEW</td></tr><tr><th class="rn">4</th><td class="">3</td><td class="">319</td><td class="">HASSAN SANDA RAMALAN</td><td class="">15193</td><td class="">POLICE AFFAIRS</td><td class=" num">12</td><td class="">1-Sep-26</td><td class=" num">109,341.46</td><td class=" num">144,000.00</td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="">1-Oct-26</td><td class="">30-Sep-27</td><td class="">TOP UP</td></tr></tbody>
+          </table></div>
+          <div class="xl-tab"><span>Sheet1</span></div>
+        </div>
+        <p class="legend"><i class="lg req"></i> required <i class="lg calc"></i> calculated for you, leave empty</p>
+        <button type="button" id="template" class="btn secondary"><svg class="ic"><use href="#i-download"/></svg> Download this format as Excel</button>
+        <h3>How it is calculated</h3>
         <ul class="fmt">
-          <li><b>Bank payment</b> and <b>Tenor</b> are required on every loan row. The tenor is never assumed: it is read from each row, so loans can have different tenors.</li>
-          <li>Gross payment = Bank payment / 0.96, and Principal = Balance B/Fwd + Gross payment.</li>
-          <li>Already have the principal? A <b>New Principal</b> or filled-in Principal column is used as it is.</li>
-          <li>Rows without a loan, such as titles or notes, are left alone.</li>
+          <li><b>Gross Payment</b> = Bank payment / 0.96</li>
+          <li><b>Principal</b> = Balance B/Fwd + Gross Payment</li>
+          <li><b>Interest</b> = Principal x monthly rate x Tenor</li>
+          <li><b>Gross Loan</b> = Principal + Interest</li>
+          <li><b>EMI</b> = Gross Loan / Tenor</li>
         </ul>
+        <p class="muted">Bank payment and Tenor are required on every loan row. The tenor is read from each row, so loans can have different tenors. If you already have a Principal or New Principal amount filled in, it is used as it is. Rows without a loan, such as titles or notes, are left alone.</p>
       </details>
   </section>
 

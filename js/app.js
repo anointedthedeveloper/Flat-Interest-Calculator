@@ -188,3 +188,24 @@ $('download').onclick = async () => {
   }
   XLSX.writeFile(lastWb, name, { bookType: 'xlsx', cellStyles: true });
 };
+
+/* ---------- downloadable format ---------- */
+$('template').onclick = () => {
+  const H = ['S/N', 'Clients ID', 'Clients Name', 'IPPIS NO', 'MINISTRY', 'Tenor', 'Payment Date', 'Balance B/Fwd', 'Bank payment', 'Gross Payment', 'Principal', 'Interest', 'Gross Loan', 'EMI', 'Start Date', 'End date', 'Status'];
+  const D = (y, m, d) => new Date(Date.UTC(y, m - 1, d));
+  const row = (n, id, name, ipps, min, tenor, bal, bank, status) =>
+    [n, id, name, ipps, min, tenor, D(2026, 9, 1), bal, bank, null, null, null, null, null, D(2026, 10, 1), D(2027, 9, 30), status];
+  const ws = XLSX.utils.aoa_to_sheet([H,
+    row(1, 551, 'OKOH ABBA EMMANUEL', 434590, 'OSGF', 12, 36012.38, 96000, 'TOP UP'),
+    row(2, 637, 'ABURU MARIA', 480210, 'LABOUR', 6, null, 240000, 'NEW'),
+    row(3, 319, 'HASSAN SANDA RAMALAN', 15193, 'POLICE AFFAIRS', 12, 109341.46, 144000, 'TOP UP'),
+  ], { cellDates: true });
+  ws['!cols'] = [6, 10, 28, 10, 18, 7, 13, 15, 15, 15, 15, 15, 15, 13, 12, 12, 10].map((wch) => ({ wch }));
+  for (let r = 1; r <= 3; r++) {
+    for (const c of [6, 14, 15]) { const x = ws[XLSX.utils.encode_cell({ r, c })]; if (x) x.z = 'd-mmm-yy'; }
+    for (const c of [7, 8]) { const x = ws[XLSX.utils.encode_cell({ r, c })]; if (x) x.z = '#,##0.00'; }
+  }
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  XLSX.writeFile(wb, 'loan_format.xlsx');
+};
