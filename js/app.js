@@ -66,7 +66,7 @@ async function loadFile(f) {
     if (spent < 700) await wait(700 - spent); // let the drop animation be seen on small files
     hasFile = true;
     const n = probe.detected;
-    setDrop('done', { name: f.name, meta: `${fmtSize(f.size)}, ${n.toLocaleString()} loan record${n === 1 ? '' : 's'} detected in "${probe.sheetName}"` });
+    setDrop('done', { name: f.name, meta: `${fmtSize(f.size)}, ${n.toLocaleString()} loan record${n === 1 ? '' : 's'} detected in "${probe.sheetName}"${probe.skipped ? `, ${probe.skipped} note row${probe.skipped === 1 ? '' : 's'} skipped` : ''}` });
     setupSettings(probe);
     $('previewTable').tHead.innerHTML = '<tr>' + pv.headers.map((h) => `<th>${esc(h)}</th>`).join('') + '</tr>';
     $('previewTable').tBodies[0].innerHTML = pv.rows.map((r) => '<tr>' + r.map((v) => `<td>${esc(v)}</td>`).join('') + '</tr>').join('');
@@ -199,23 +199,3 @@ $('download').onclick = async () => {
   }
   XLSX.writeFile(lastWb, name, { bookType: 'xlsx', cellStyles: true });
 };
-
-/* ---------- sample files ---------- */
-const downloadSample = (name, aoa, widths) => {
-  const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
-  ws['!cols'] = widths.map((w) => ({ wch: w }));
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Loans');
-  XLSX.writeFile(wb, name);
-};
-const D = (y, m, d) => new Date(Date.UTC(y, m - 1, d));
-$('sample').onclick = () => downloadSample('sample_new_principal.xlsx', [
-  ['Payment Date', 'Bal. restruc', 'Bank payment', 'Gross bank paym', 'New Principal', 'Interest', 'Gross Loan', 'Monthly repayment', 'Start Date', 'End date', 'Status'],
-  [D(2026, 9, 1), null, 144000, 150000, 150000, null, null, null, D(2026, 10, 1), D(2027, 9, 30), 'RENEWAL'],
-  [D(2026, 9, 4), 165375, 144000, 150000, 315375, null, null, null, D(2026, 10, 1), D(2027, 9, 30), 'TOP UP'],
-], Array(11).fill(16));
-$('sample2').onclick = () => downloadSample('sample_bank_payment.xlsx', [
-  ['s/n', 'Clients Name', 'IPPIS NO', 'Ministry', 'Tenor', 'Payment Date', 'Balance B/F', 'Bank payment', 'Gross bank payment (Bank payment / 0.96)', 'Principal (Balance B/F + Gross)', 'Total Interest', 'Total debt', 'monthly EMI'],
-  [1, 'AUDU DANJUMA', 86679, 'OSGF', 12, D(2026, 9, 1), 0, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'],
-  [2, 'OMOLORO OLUWASEYI', 437602, 'OSGF', 12, D(2026, 9, 4), 165375, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'],
-], [6, 28, 12, 14, 8, 14, 14, 14, 24, 24, 16, 16, 16]);

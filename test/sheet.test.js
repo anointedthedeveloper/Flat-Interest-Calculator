@@ -24,7 +24,7 @@ test('calculates, updates existing columns, flags bad rows', () => {
     ['x', '', '', '', 'abc'], ['x', '', '', '', -5], ['x', '', '', '', '']]);
   const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, autoTenure: false, extraColumns: true });
   assert.equal(out.rows.length, 2);
-  assert.equal(out.invalid.length, 3);
+  assert.equal(out.invalid.length, 2); // the lone-'x' row is a note, not a loan
   const rows = XLSX.utils.sheet_to_json(wb.Sheets.Loans);
   assert.equal(rows[1]['Interest'], 189225);
   assert.equal(rows[1]['Gross Loan'], 504600);
@@ -73,4 +73,30 @@ test('no extra columns by default: output columns equal input columns', () => {
   const after = XLSX.utils.sheet_to_json(wb.Sheets.Loans, { header: 1 })[0];
   assert.deepEqual(after, before);
   assert.equal(XLSX.utils.sheet_to_json(wb.Sheets.Loans)[0]['Clients ID'], 156);
+});
+
+test('building layout: blank cells, different tenors, note rows skipped', () => {
+  const wb = build([
+    ['S/N', 'Clients Name', 'Tenor', 'Balance B/Fwd', 'Bank payment', 'Gross Payment (Column I/.96)', 'Principal (H+J)', 'Interest', 'Gross Loan (K+L)', 'EMI', 'Status'],
+    [1, 'OKOH', 12, 36012.38, 96000, null, null, null, null, null, 'TOP UP'],
+    [2, 'ABURU', 6, null, 240000, null, null, null, null, null, 'NEW'],
+    [null, 'SCHOOL CUSTOMER'],
+    [3, 'EWARAMI', 18, null, 288000, 300000, 300000, 180000, 480000, 40000, 'NEW'],
+    [4, 'BLANK TENOR', null, null, 96000, null, null, null, null, null, 'NEW'],
+  ]);
+  const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, deduction: 4, useFileTenor: true });
+  assert.equal(out.skipped, 1);
+  assert.equal(out.rows.length, 4);
+  const r = XLSX.utils.sheet_to_json(wb.Sheets.Loans);
+  assert.equal(r[0]['Gross Payment (Column I/.96)'], 100000);
+  assert.equal(r[0]['Principal (H+J)'], 136012.38);
+  assert.equal(r[0]['Interest'], 81607.43);
+  assert.equal(r[0]['EMI'], 18134.98);
+  assert.equal(r[1]['Principal (H+J)'], 250000);
+  assert.equal(r[1]['Interest'], 75000); // 6 months
+  assert.equal(r[1]['EMI'], 54166.67);
+  assert.equal(r[3]['Principal (H+J)'], 300000);
+  assert.equal(r[3]['Gross Loan (K+L)'], 570000); // 18 months: 300000 + 300000*5%*18
+  assert.equal(r[3]['EMI'], 31666.67);
+  assert.equal(r[4]['Interest'], 60000); // blank tenor falls back to 12
 });

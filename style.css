@@ -173,3 +173,14 @@ label{margin-bottom:16px}
 .cards{gap:10px}.stat{background:#fafbfc}
 .stat b{font-size:18px}
 select{font-weight:400}
+.ex th.calc,.ex td.calc{background:#eef2f7;color:var(--muted)}
+.ex th.req{background:#dcebfb;color:var(--brand-d)}
+.ex td{background:#fff}
+.fmt{margin:10px 0 0;padding-left:18px;font-size:14px;color:var(--ink)}.fmt li{margin:4px 0}
+.cols{list-style:none;display:flex;flex-wrap:wrap;gap:6px;padding:0;margin:6px 0}
+.cols li{border:1px solid var(--line);background:#fff;border-radius:6px;padding:4px 9px;font-size:13px}
+.cols li.req{background:#dcebfb;border-color:#b9d3f0;color:var(--brand-d);font-weight:600}
+.cols li.calc{background:#eef2f7;border-style:dashed;color:var(--muted)}
+.legend{font-size:12px;color:var(--muted);margin:6px 0 0;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.lg{display:inline-block;width:12px;height:12px;border-radius:3px;border:1px solid var(--line);margin-left:8px}
+.lg.req{background:#dcebfb;border-color:#b9d3f0}.lg.calc{background:#eef2f7;border-style:dashed}

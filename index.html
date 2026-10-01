@@ -80,27 +80,17 @@
       </div>
 
       <details class="guide">
-        <summary><svg class="ic"><use href="#i-info"/></svg> Which file format do I need? (view examples)</summary>
-        <p>One Excel sheet (.xlsx or .xls), a header row in the first rows, then one row per loan. Use <b>either</b> layout. Column names can vary in capitals and spacing.</p>
-
-        <h3>Layout A: you already have the principal</h3>
-        <div class="tablewrap small"><table class="ex">
-          <thead><tr><th>Payment Date</th><th>Bal. restruc</th><th>Bank payment</th><th>Gross bank paym</th><th class="req">New Principal</th><th>Interest</th><th>Gross Loan</th><th>Monthly repayment</th><th>Start Date</th><th>End date</th><th>Status</th></tr></thead>
-          <tbody><tr><td>01-Sep-26</td><td></td><td>144,000</td><td>150,000</td><td>150,000</td><td></td><td></td><td></td><td>1-Oct-2026</td><td>30-Sep-2027</td><td>RENEWAL</td></tr></tbody>
-        </table></div>
-        <p class="muted">Only <b>New Principal</b> is required. Interest, Gross Loan and Monthly repayment are filled in (added at the end if missing).</p>
-
-        <h3>Layout B: principal comes from the bank payment</h3>
-        <div class="tablewrap small"><table class="ex">
-          <thead><tr><th>s/n</th><th>Clients ID</th><th>Clients Name</th><th>IPPIS NO</th><th>AAA MINISTRY2</th><th>Tenor</th><th>Payment Date</th><th>Balance B/F</th><th class="req">Bank payment</th><th>Gross bank payment (column I/0.96)</th><th>Principal (column H + Column J)</th><th>Total Interest</th><th>Total debt (Columns K + L)</th><th>monthly EMI</th></tr></thead>
-          <tbody><tr><td>1</td><td>156</td><td>AUDU DANJUMA</td><td>86679</td><td>OSGF</td><td>12</td><td>1-Sep-26</td><td>0</td><td>144,000</td><td>XXXX</td><td>XXXX</td><td>XXXX</td><td>XXXX</td><td>XXXX</td></tr></tbody>
-        </table></div>
-        <p class="muted">Only <b>Bank payment</b> is required. Gross bank payment = Bank payment / 0.96. Principal = Balance B/F + Gross bank payment. The five XXXX columns are replaced with the calculated numbers. Every other column comes back exactly as uploaded.</p>
-
-        <div class="links">
-          <button type="button" id="sample" class="link"><svg class="ic"><use href="#i-download"/></svg> Sample file: Layout A</button>
-          <button type="button" id="sample2" class="link"><svg class="ic"><use href="#i-download"/></svg> Sample file: Layout B</button>
-        </div>
+        <summary><svg class="ic"><use href="#i-info"/></svg> Which file format do I need?</summary>
+        <p>One sheet with a header row, then one row per loan. Column names can differ slightly in capitals and spacing.</p>
+        <p class="muted">Header row, in this order:</p>
+        <ol class="cols"><li class="">S/N</li><li class="">Clients ID</li><li class="">Clients Name</li><li class="">IPPIS NO</li><li class="">MINISTRY</li><li class="">Tenor</li><li class="">Payment Date</li><li class="">Balance B/Fwd</li><li class="req">Bank payment</li><li class="calc">Gross Payment (Column I/.96)</li><li class="calc">Principal (H+J)</li><li class="calc">Interest</li><li class="calc">Gross Loan (K+L)</li><li class="calc">EMI</li><li class="">Start Date</li><li class="">End date</li><li class="">Status</li></ol>
+        <p class="legend"><i class="lg req"></i> required <i class="lg calc"></i> calculated for you, leave blank</p>
+        <ul class="fmt">
+          <li><b>Bank payment</b> is required. Gross payment = Bank payment / 0.96, and Principal = Balance B/Fwd + Gross payment.</li>
+          <li><b>Tenor</b> can be different on every row. Each loan uses its own Tenor (blank means the tenure in the settings).</li>
+          <li>Already have the principal? A <b>New Principal</b> or filled-in Principal column is used as it is.</li>
+          <li>Rows without a loan, such as titles or notes, are left alone.</li>
+        </ul>
       </details>
     </section>
 

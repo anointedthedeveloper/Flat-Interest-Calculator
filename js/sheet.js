@@ -8,10 +8,10 @@ const FIND = {
   principal: (h) => /^newprin/.test(h),
   fallbackPrincipal: (h) => /^princip/.test(h),
   bank: (h) => /^bankpay/.test(h),
-  grossBank: (h) => /^grossbankpay/.test(h),
-  balance: (h) => /^(balance|bal)(bf|broughtforward|restruc\w*)?$/.test(h),
+  grossBank: (h) => /^grossbankpay|^grosspayment/.test(h),
+  balance: (h) => /^(balance|bal)(bf|bfwd|broughtforward|restruc\w*)?$/.test(h),
   interest: (h) => h === 'interest' || h === 'totalinterest',
-  gross: (h) => h === 'grossloan' || h === 'totalrepayment' || /^totaldebt/.test(h) || h === 'grossloantotalrepayment',
+  gross: (h) => /^grossloan/.test(h) || h === 'totalrepayment' || /^totaldebt/.test(h),
   monthly: (h) => /^monthlyrepay/.test(h) || /^monthlyemi/.test(h) || h === 'emi',
   rate: (h) => /^monthlyflatrate|^flatrate|^interestrate$/.test(h),
   monthlyInterest: (h) => h === 'monthlyinterest',
@@ -110,7 +110,7 @@ export function processWorkbook(XLSX, wb, settings) {
   };
 
   const rows = [], invalid = [];
-  let detected = 0;
+  let detected = 0, skipped = 0;
   for (let r = hr + 1; r <= range.e.r; r++) {
     let hasData = false;
     for (let c = range.s.c; c <= range.e.c; c++) {
@@ -118,8 +118,11 @@ export function processWorkbook(XLSX, wb, settings) {
       if (cell && cell.v !== undefined && String(cell.v).trim() !== '') { hasData = true; break; }
     }
     if (!hasData) continue; // empty row
-    detected++;
     const cellAt = (key) => (cols[key] === undefined ? undefined : ws[XLSX.utils.encode_cell({ r, c: cols[key] })]);
+    const blank = (key) => { const x = cellAt(key); return !x || x.v === undefined || String(x.v).trim() === ''; };
+    // A row with no principal, bank payment, balance or tenor is a label/note, not a loan: leave it alone.
+    if (blank('principal') && blank('bank') && blank('balance') && blank('tenure')) { skipped++; continue; }
+    detected++;
     const nameCell = cellAt('name');
     const label = nameCell && nameCell.v ? String(nameCell.v) : `Row ${r + 1}`;
     const statusCell = cellAt('status');
@@ -151,6 +154,11 @@ export function processWorkbook(XLSX, wb, settings) {
     }
     if (principal < 0) { fail('Principal is negative.'); continue; }
     if (principal === 0) { fail('Principal is zero.'); continue; }
+    let fillGross = false; // principal was supplied but the gross payment cell is blank: fill it too
+    if (!derived && cols.grossBank !== undefined && blank('grossBank') && cols.bank !== undefined) {
+      const bank = parseAmount(cellAt('bank')?.v);
+      if (Number.isFinite(bank) && bank >= 0) { gross = grossFromBank(bank, deduction); fillGross = true; }
+    }
 
     let tenure = settings.tenure;
     if (settings.useFileTenor && hasTenorColumn) {
@@ -167,7 +175,7 @@ export function processWorkbook(XLSX, wb, settings) {
     }
 
     const res = calculateLoan(principal, settings.rate, tenure);
-    if (derived && cols.grossBank !== undefined) setNum(r, 'grossBank', gross, MONEY_FMT);
+    if ((derived || fillGross) && cols.grossBank !== undefined) setNum(r, 'grossBank', gross, MONEY_FMT);
     if (derived) setNum(r, 'principal', res.principal, MONEY_FMT); // leave a supplied principal exactly as it was
     setNum(r, 'rate', res.rate / 100, '0.00%');
     setNum(r, 'monthlyInterest', res.monthlyInterest, MONEY_FMT);
@@ -180,7 +188,7 @@ export function processWorkbook(XLSX, wb, settings) {
 
   if (!dry) ws['!ref'] = XLSX.utils.encode_range({ s: range.s, e: { r: range.e.r, c: Math.max(range.e.c, nextCol - 1) } });
   if (!dry && ws['!cols']) for (let c = range.e.c + 1; c < nextCol; c++) ws['!cols'][c] = { wch: 18 };
-  return { sheetName, edits, detected, rows, invalid, hasTenorColumn, hasDates: cols.start !== undefined && cols.end !== undefined, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
+  return { sheetName, edits, detected, skipped, rows, invalid, hasTenorColumn, hasDates: cols.start !== undefined && cols.end !== undefined, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
 }
 
 export function summarize(rows) {
