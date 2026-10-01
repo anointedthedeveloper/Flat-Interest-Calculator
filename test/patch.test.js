@@ -22,7 +22,7 @@ const REAL = '/root/.claude/uploads/676f5c45-2ab5-5cb7-bc50-a53211555387/1541f6d
 test('real workbook: only the XXXX cells change, every other file in the package is identical', { skip: !fs.existsSync(REAL) }, async () => {
   const buf = fs.readFileSync(REAL);
   const wb = XLSX.read(buf, { type: 'buffer', cellNF: true, cellStyles: true });
-  const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, deduction: 4, useFileTenor: true });
+  const out = processWorkbook(XLSX, wb, { rate: 5, deduction: 4 });
   assert.equal(out.edits.length, 20); // 4 rows x 5 calculated columns
   const patched = await patchXlsx(JSZip, buf, out.sheetName, out.edits);
   const a = await JSZip.loadAsync(buf), b = await JSZip.loadAsync(patched);
@@ -42,7 +42,7 @@ test('keep as is: nothing removed, empty and invalid rows untouched', async () =
   const wb0 = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb0, XLSX.utils.aoa_to_sheet(aoa), 'Loans'); XLSX.utils.book_append_sheet(wb0, XLSX.utils.aoa_to_sheet([['other']]), 'Other');
   const buf = XLSX.write(wb0, { type: 'buffer', bookType: 'xlsx' });
   const wb = XLSX.read(buf, { type: 'buffer' });
-  const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, deduction: 4, useFileTenor: true });
+  const out = processWorkbook(XLSX, wb, { rate: 5, deduction: 4 });
   const patched = await patchXlsx(JSZip, buf, out.sheetName, out.edits);
   const before = XLSX.read(buf, { type: 'buffer' }), after = XLSX.read(patched, { type: 'buffer' });
   assert.deepEqual(after.SheetNames, before.SheetNames);

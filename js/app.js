@@ -61,7 +61,7 @@ async function loadFile(f) {
     buffer = await f.arrayBuffer();
     const wb = readWorkbook(buffer);
     const pv = previewSheet(XLSX, wb);
-    const probe = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, deduction: 4, dryRun: true });
+    const probe = processWorkbook(XLSX, wb, { rate: 5, deduction: 4, dryRun: true });
     const spent = performance.now() - t0;
     if (spent < 700) await wait(700 - spent); // let the drop animation be seen on small files
     hasFile = true;
@@ -80,31 +80,20 @@ async function loadFile(f) {
 }
 
 /* ---------- settings ---------- */
-function setupSettings(probe) {
-  const opts = [['fixed', 'The number above']];
-  if (probe.hasTenorColumn) opts.unshift(['column', 'Tenor column in the file']);
-  if (probe.hasDates) opts.push(['dates', 'Start Date and End date']);
-  $('tsrc').innerHTML = opts.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
-  show($('srcRow'), opts.length > 1);
-  show($('dedRow'), probe.usesBank);
-  syncTenure();
-}
-const syncTenure = () => { $('tenure').disabled = $('tsrc').value === 'dates'; };
-$('tsrc').onchange = syncTenure;
+const setupSettings = (probe) => show($('dedRow'), probe.usesBank);
 
 $('calc').onclick = async () => {
   fail($('settingsError'), ''); fail($('error'), '');
-  const rate = parseFloat($('rate').value), tenure = Number($('tenure').value), auto = $('tsrc').value === 'dates';
+  const rate = parseFloat($('rate').value);
   const deduction = $('dedRow').hidden ? 4 : parseFloat($('deduction').value);
-  const useFileTenor = $('tsrc').value === 'column';
-  const err = validateSettings(rate, tenure, auto, deduction);
+  const err = validateSettings(rate, deduction);
   if (err) { fail($('settingsError'), err); return; }
   const btn = $('calc'); btn.disabled = true;
   const label = btn.innerHTML; btn.textContent = 'Calculating...';
   await nextPaint();
   try {
     lastWb = readWorkbook(buffer); // fresh copy every run
-    const out = processWorkbook(XLSX, lastWb, { rate, tenure, autoTenure: auto, deduction, useFileTenor });
+    const out = processWorkbook(XLSX, lastWb, { rate, deduction });
     lastOut = out;
     render(out);
     show($('xlsNote'), !isXlsx);

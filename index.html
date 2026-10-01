@@ -79,33 +79,33 @@
         </div>
       </div>
 
-      <details class="guide">
-        <summary><svg class="ic"><use href="#i-info"/></svg> Which file format do I need?</summary>
-        <p>One sheet with a header row, then one row per loan. Column names can differ slightly in capitals and spacing.</p>
-        <p class="muted">Header row, in this order:</p>
-        <ol class="cols"><li class="">S/N</li><li class="">Clients ID</li><li class="">Clients Name</li><li class="">IPPIS NO</li><li class="">MINISTRY</li><li class="">Tenor</li><li class="">Payment Date</li><li class="">Balance B/Fwd</li><li class="req">Bank payment</li><li class="calc">Gross Payment (Column I/.96)</li><li class="calc">Principal (H+J)</li><li class="calc">Interest</li><li class="calc">Gross Loan (K+L)</li><li class="calc">EMI</li><li class="">Start Date</li><li class="">End date</li><li class="">Status</li></ol>
-        <p class="legend"><i class="lg req"></i> required <i class="lg calc"></i> calculated for you, leave blank</p>
-        <ul class="fmt">
-          <li><b>Bank payment</b> is required. Gross payment = Bank payment / 0.96, and Principal = Balance B/Fwd + Gross payment.</li>
-          <li><b>Tenor</b> can be different on every row. Each loan uses its own Tenor (blank means the tenure in the settings).</li>
-          <li>Already have the principal? A <b>New Principal</b> or filled-in Principal column is used as it is.</li>
-          <li>Rows without a loan, such as titles or notes, are left alone.</li>
-        </ul>
-      </details>
+      
     </section>
 
     <aside class="card side" id="settingsCard">
       <h2>2. Loan settings</h2>
       <label><span class="lt">Monthly flat interest rate (%) <span class="tip" tabindex="0" role="img" aria-label="Percentage charged on the original principal every month. 5 means 5% a month, the same amount every month." data-tip="Percentage charged on the original principal every month. 5 means 5% a month, the same amount every month."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="rate" type="number" step="0.01" min="0" max="100" value="5.00" inputmode="decimal"></label>
-      <label><span class="lt">Loan tenure (months) <span class="tip" tabindex="0" role="img" aria-label="Number of months the loan runs. Total interest = monthly interest x tenure." data-tip="Number of months the loan runs. Total interest = monthly interest x tenure."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="tenure" type="number" step="1" min="1" value="12" inputmode="numeric"></label>
-      <label id="srcRow" hidden><span class="lt">Take tenure from <span class="tip" tabindex="0" role="img" aria-label="Choose where each loan gets its number of months. Rows with no value use the tenure above." data-tip="Choose where each loan gets its number of months. Rows with no value use the tenure above."><svg class="ic"><use href="#i-info"/></svg></span></span>
-        <select id="tsrc"><option value="fixed">The number above</option></select></label>
       <label id="dedRow" hidden><span class="lt">Bank deduction (%) <span class="tip" tabindex="0" role="img" aria-label="Bank payments arrive after this deduction. Gross bank payment = Bank payment / (1 - deduction). 4% means divide by 0.96." data-tip="Bank payments arrive after this deduction. Gross bank payment = Bank payment / (1 - deduction). 4% means divide by 0.96."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="deduction" type="number" step="0.01" min="0" max="99" value="4" inputmode="decimal"></label>
       <p id="settingsError" class="error" hidden></p>
       <button id="calc" class="btn block" disabled><svg class="ic"><use href="#i-calc"/></svg> Calculate Loans</button>
       <p id="error" class="error" hidden></p>
     </aside>
   </div>
+
+  <section class="card guide-card">
+      <details class="guide">
+        <summary><svg class="ic"><use href="#i-info"/></svg> Which file format do I need?</summary>
+        <p>One sheet with a header row, then one row per loan, laid out like this. Column names can differ slightly in capitals and spacing.</p>
+        <div class="tablewrap small"><table class="ex"><thead><tr><th class="">S/N</th><th class="">Clients ID</th><th class="">Clients Name</th><th class="">IPPIS NO</th><th class="">MINISTRY</th><th class="req">Tenor</th><th class="">Payment Date</th><th class="">Balance B/Fwd</th><th class="req">Bank payment</th><th class="calc">Gross Payment (Column I/.96)</th><th class="calc">Principal (H+J)</th><th class="calc">Interest</th><th class="calc">Gross Loan (K+L)</th><th class="calc">EMI</th><th class="">Start Date</th><th class="">End date</th><th class="">Status</th></tr></thead><tbody><tr><td class="">1</td><td class="">551</td><td class="">OKOH ABBA EMMANUEL</td><td class="">434590</td><td class="">OSGF</td><td class="">12</td><td class="">1-Sep-26</td><td class="">36,012.38</td><td class="">96,000</td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="">1-Oct-26</td><td class="">30-Sep-27</td><td class="">TOP UP</td></tr><tr><td class="">2</td><td class="">637</td><td class="">ABURU MARIA</td><td class="">480210</td><td class="">LABOUR</td><td class="">6</td><td class="">1-Sep-26</td><td class=""></td><td class="">240,000</td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="calc"></td><td class="">1-Oct-26</td><td class="">30-Sep-27</td><td class="">NEW</td></tr></tbody></table></div>
+        <p class="legend"><i class="lg req"></i> required <i class="lg calc"></i> calculated for you, leave blank</p>
+        <ul class="fmt">
+          <li><b>Bank payment</b> and <b>Tenor</b> are required on every loan row. The tenor is never assumed: it is read from each row, so loans can have different tenors.</li>
+          <li>Gross payment = Bank payment / 0.96, and Principal = Balance B/Fwd + Gross payment.</li>
+          <li>Already have the principal? A <b>New Principal</b> or filled-in Principal column is used as it is.</li>
+          <li>Rows without a loan, such as titles or notes, are left alone.</li>
+        </ul>
+      </details>
+  </section>
 
   <section class="card" id="preview" hidden>
     <h2>File preview <span id="previewNote" class="muted"></span></h2>

@@ -1,4 +1,4 @@
-import { calculateLoan, parseAmount, monthsBetween, grossFromBank } from './calc.js';
+import { calculateLoan, parseAmount, grossFromBank } from './calc.js';
 
 const norm = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const MONEY_FMT = '#,##0.00';
@@ -33,20 +33,10 @@ function findHeaderRow(XLSX, ws, range) {
   return -1;
 }
 
-function cellDateParts(XLSX, cell) {
-  if (!cell || cell.v === undefined || cell.v === '') return null;
-  if (typeof cell.v === 'number') {
-    const p = XLSX.SSF.parse_date_code(cell.v); // serial → parts, no timezone involved
-    return p ? { y: p.y, m: p.m, d: p.d } : null;
-  }
-  const t = new Date(String(cell.v) + ' UTC');
-  return isNaN(t) ? null : { y: t.getUTCFullYear(), m: t.getUTCMonth() + 1, d: t.getUTCDate() };
-}
-
 /**
  * Calculates every loan row of the first sheet that has a "New Principal" column and
  * writes results back into that SAME worksheet (original columns/data/formats preserved).
- * settings: { rate: number(%), tenure: number|null, autoTenure: boolean }
+ * settings: { rate: number(%), deduction: number(%) }. Tenor is always read from the file.
  */
 export function processWorkbook(XLSX, wb, settings) {
   const sheetName = wb.SheetNames.find((n) => wb.Sheets[n]['!ref'] && findHeaderRow(XLSX, wb.Sheets[n], XLSX.utils.decode_range(wb.Sheets[n]['!ref'])) >= 0);
@@ -75,7 +65,8 @@ export function processWorkbook(XLSX, wb, settings) {
   }
   if (cols.principal === undefined) cols.principal = cols.fallback;
   if (cols.principal === undefined && cols.bank === undefined) throw new Error('Could not find a "New Principal" or "Bank payment" column.');
-  const hasTenorColumn = cols.tenure !== undefined;
+  if (cols.tenure === undefined) throw new Error('No Tenor column found. Add a column named "Tenor" with the number of months for each loan, then upload the file again.');
+  const hasTenorColumn = true;
   const deduction = settings.deduction ?? 4;
   // Principal column may be missing when it is derived from Bank payment: create it.
 
@@ -89,11 +80,6 @@ export function processWorkbook(XLSX, wb, settings) {
     if (!dry) { const a = XLSX.utils.encode_cell({ r: hr, c: cols[key] }); ws[a] = { t: 's', v: title }; edits.push({ addr: a, text: title }); }
   };
   addCol('principal', 'Principal');
-  if (settings.extraColumns) { // optional: only when the user asks for them
-    addCol('rate', 'Monthly Flat Rate');
-    addCol('monthlyInterest', 'Monthly Interest');
-    addCol('tenure', 'Loan Tenure');
-  }
   addCol('interest', 'Interest');
   addCol('gross', 'Gross Loan');
   addCol('monthly', 'Monthly repayment');
@@ -160,26 +146,15 @@ export function processWorkbook(XLSX, wb, settings) {
       if (Number.isFinite(bank) && bank >= 0) { gross = grossFromBank(bank, deduction); fillGross = true; }
     }
 
-    let tenure = settings.tenure;
-    if (settings.useFileTenor && hasTenorColumn) {
-      const tc = cellAt('tenure');
-      if (tc && tc.v !== undefined && String(tc.v).trim() !== '') {
-        tenure = parseAmount(tc.v);
-        if (!Number.isInteger(tenure) || tenure < 1) { fail(`Tenor "${tc.v}" is not a valid number of months.`); continue; }
-      }
-    }
-    if (settings.autoTenure) {
-      const s = cellDateParts(XLSX, cellAt('start')), e = cellDateParts(XLSX, cellAt('end'));
-      tenure = s && e ? monthsBetween(s, e) : NaN;
-      if (!(tenure >= 1)) { fail('Auto tenure needs a valid Start Date and End Date (end after start).'); continue; }
-    }
+    // Tenor always comes from the file: never assumed or defaulted.
+    const tc = cellAt('tenure');
+    if (!tc || tc.v === undefined || String(tc.v).trim() === '') { fail('Tenor is empty. Add the number of months for this loan.'); continue; }
+    const tenure = parseAmount(tc.v);
+    if (!Number.isInteger(tenure) || tenure < 1) { fail(`Tenor "${tc.v}" is not a valid number of months.`); continue; }
 
     const res = calculateLoan(principal, settings.rate, tenure);
     if ((derived || fillGross) && cols.grossBank !== undefined) setNum(r, 'grossBank', gross, MONEY_FMT);
     if (derived) setNum(r, 'principal', res.principal, MONEY_FMT); // leave a supplied principal exactly as it was
-    setNum(r, 'rate', res.rate / 100, '0.00%');
-    setNum(r, 'monthlyInterest', res.monthlyInterest, MONEY_FMT);
-    setNum(r, 'tenure', res.tenure, '0');
     setNum(r, 'interest', res.totalInterest, MONEY_FMT);
     setNum(r, 'gross', res.totalRepayment, MONEY_FMT);
     setNum(r, 'monthly', res.monthlyRepayment, MONEY_FMT);
@@ -188,7 +163,7 @@ export function processWorkbook(XLSX, wb, settings) {
 
   if (!dry) ws['!ref'] = XLSX.utils.encode_range({ s: range.s, e: { r: range.e.r, c: Math.max(range.e.c, nextCol - 1) } });
   if (!dry && ws['!cols']) for (let c = range.e.c + 1; c < nextCol; c++) ws['!cols'][c] = { wch: 18 };
-  return { sheetName, edits, detected, skipped, rows, invalid, hasTenorColumn, hasDates: cols.start !== undefined && cols.end !== undefined, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
+  return { sheetName, edits, detected, skipped, rows, invalid, hasTenorColumn, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
 }
 
 export function summarize(rows) {

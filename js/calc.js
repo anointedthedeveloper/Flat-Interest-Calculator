@@ -19,10 +19,9 @@ export function grossFromBank(bank, deductionPercent) {
   return round2(clean(bank / (1 - deductionPercent / 100)));
 }
 
-export function validateSettings(rate, tenure, auto, deduction = 4) {
+export function validateSettings(rate, deduction = 4) {
   if (!Number.isFinite(rate) || rate < 0 || rate > 100) return 'Interest rate must be a number between 0 and 100.';
   if (!Number.isFinite(deduction) || deduction < 0 || deduction >= 100) return 'Bank deduction must be a number from 0 to under 100.';
-  if (!auto && (!Number.isInteger(tenure) || tenure < 1 || tenure > 600)) return 'Tenure must be a whole number of months (1–600).';
   return null;
 }
 
