@@ -165,6 +165,19 @@ $('pageSize').onchange = () => { page = 0; drawPage(); };
 $('prev').onclick = () => { page--; drawPage(); };
 $('next').onclick = () => { page++; drawPage(); };
 
+// Every sheet of the original must still exist, with at least the same used range.
+function integrityProblem(bytes) {
+  const o = XLSX.read(buffer, { type: 'array', sheetStubs: true }), n = XLSX.read(bytes, { type: 'array', sheetStubs: true });
+  if (o.SheetNames.join('|') !== n.SheetNames.join('|')) return 'Sheet list changed';
+  for (const name of o.SheetNames) {
+    const a = o.Sheets[name]['!ref'], b = n.Sheets[name]['!ref'];
+    if (!a) continue;
+    if (!b) return `Sheet "${name}" lost its data`;
+    const ra = XLSX.utils.decode_range(a), rb = XLSX.utils.decode_range(b);
+    if (rb.e.r < ra.e.r || rb.e.c < ra.e.c) return `Sheet "${name}" lost rows or columns`;
+  }
+  return null;
+}
 function save(blobParts, name, type) {
   const url = URL.createObjectURL(new Blob(blobParts, { type }));
   const a = Object.assign(document.createElement('a'), { href: url, download: name });
@@ -175,10 +188,16 @@ $('download').onclick = async () => {
   const d = new Date(), p = (n) => String(n).padStart(2, '0');
   const name = `loan_calculated_${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.xlsx`;
   const xlsxType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-  fail($('error'), '');
+  fail($('error'), ''); show($('dlNote'), false);
   if (isXlsx) {
     try { // .xlsx: change only the calculated cells inside the original file, so all formatting survives
-      save([await patchXlsx(JSZip, buffer, lastOut.sheetName, lastOut.edits)], name, xlsxType);
+      const bytes = await patchXlsx(JSZip, buffer, lastOut.sheetName, lastOut.edits);
+      const problem = integrityProblem(bytes);
+      if (problem) throw new Error(problem);
+      save([bytes], name, xlsxType);
+      const sheets = XLSX.read(buffer, { type: 'array', bookSheets: true }).SheetNames.length;
+      $('dlNote').textContent = `Checked: all ${sheets} sheet${sheets === 1 ? '' : 's'}, rows and columns were kept. ${lastOut.edits.length.toLocaleString()} cell${lastOut.edits.length === 1 ? '' : 's'} changed.`;
+      show($('dlNote'));
       return;
     } catch (e) { console.warn('In-place save failed, using standard export', e); }
   }

@@ -160,3 +160,4 @@ label .hint{margin-top:3px}
 .tip::after{content:attr(data-tip);position:absolute;right:-6px;bottom:calc(100% + 8px);width:250px;max-width:70vw;padding:9px 11px;border-radius:8px;background:#16202e;color:#fff;font:400 12.5px/1.45 system-ui,sans-serif;text-transform:none;letter-spacing:0;white-space:normal;text-align:left;opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .15s,transform .15s;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.2)}
 .tip:hover::after,.tip:focus::after{opacity:1;transform:none}
 .lt .tip::after{left:-8px;right:auto}
+.muted.ok{color:var(--ok);font-weight:600}

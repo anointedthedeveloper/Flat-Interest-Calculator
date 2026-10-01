@@ -35,3 +35,24 @@ test('real workbook: only the XXXX cells change, every other file in the package
   assert.equal(rows[1]['monthly EMI'], 42050);
   assert.equal(rows[1]['Clients ID'], 451);
 });
+
+test('keep as is: nothing removed, empty and invalid rows untouched', async () => {
+  const aoa = [['s/n', 'Name', 'Tenor', 'Balance B/F', 'Bank payment', 'Gross bank payment (column E/0.96)', 'Principal (column D + Column F)', 'Total Interest', 'Total debt', 'monthly EMI'],
+    [1, 'A', 12, 0, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'], [], [2, 'BAD', 12, 0, 'abc', 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'], ['note', 'footer text']];
+  const wb0 = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb0, XLSX.utils.aoa_to_sheet(aoa), 'Loans'); XLSX.utils.book_append_sheet(wb0, XLSX.utils.aoa_to_sheet([['other']]), 'Other');
+  const buf = XLSX.write(wb0, { type: 'buffer', bookType: 'xlsx' });
+  const wb = XLSX.read(buf, { type: 'buffer' });
+  const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, deduction: 4, useFileTenor: true });
+  const patched = await patchXlsx(JSZip, buf, out.sheetName, out.edits);
+  const before = XLSX.read(buf, { type: 'buffer' }), after = XLSX.read(patched, { type: 'buffer' });
+  assert.deepEqual(after.SheetNames, before.SheetNames);
+  assert.equal(after.Sheets.Loans['!ref'], before.Sheets.Loans['!ref']);
+  const edited = new Set(out.edits.map((e) => e.addr));
+  for (const addr of Object.keys(before.Sheets.Loans)) {
+    if (addr[0] === '!' || edited.has(addr)) continue;
+    assert.equal(after.Sheets.Loans[addr].v, before.Sheets.Loans[addr].v, addr);
+  }
+  assert.equal(after.Sheets.Loans.G2.v, 150000);
+  assert.equal(after.Sheets.Loans.G4.v, 'XXXX'); // invalid row left as is
+  assert.equal(after.Sheets.Other.A1.v, 'other');
+});
