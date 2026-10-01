@@ -81,11 +81,12 @@ export function processWorkbook(XLSX, wb, settings) {
 
   // Add missing output columns at the end (existing columns are updated in place).
   let nextCol = range.e.c + 1;
+  const edits = []; // every cell we change, so an .xlsx can be patched in place (see patch.js)
   const dry = !!settings.dryRun; // dry run: analyse only, never touch the sheet
   const addCol = (key, title) => {
     if (cols[key] !== undefined) return;
     cols[key] = nextCol++;
-    if (!dry) ws[XLSX.utils.encode_cell({ r: hr, c: cols[key] })] = { t: 's', v: title };
+    if (!dry) { const a = XLSX.utils.encode_cell({ r: hr, c: cols[key] }); ws[a] = { t: 's', v: title }; edits.push({ addr: a, text: title }); }
   };
   addCol('principal', 'Principal');
   if (settings.extraColumns) { // optional: only when the user asks for them
@@ -101,9 +102,11 @@ export function processWorkbook(XLSX, wb, settings) {
     if (dry || cols[key] === undefined) return;
     const addr = XLSX.utils.encode_cell({ r, c: cols[key] });
     const old = ws[addr];
+    if (key === 'tenure' && old && old.t === 'n' && old.v === v) return; // already right: leave untouched
     const z = old && old.z && old.z !== 'General' ? old.z : fmt;
     ws[addr] = { ...(old || {}), t: 'n', v, z };
     delete ws[addr].w; delete ws[addr].f;
+    edits.push({ addr, value: v });
   };
 
   const rows = [], invalid = [];
@@ -177,7 +180,7 @@ export function processWorkbook(XLSX, wb, settings) {
 
   if (!dry) ws['!ref'] = XLSX.utils.encode_range({ s: range.s, e: { r: range.e.r, c: Math.max(range.e.c, nextCol - 1) } });
   if (!dry && ws['!cols']) for (let c = range.e.c + 1; c < nextCol; c++) ws['!cols'][c] = { wch: 18 };
-  return { sheetName, detected, rows, invalid, hasTenorColumn, derivedCount: rows.filter((r) => r.derived).length };
+  return { sheetName, edits, detected, rows, invalid, hasTenorColumn, derivedCount: rows.filter((r) => r.derived).length };
 }
 
 export function summarize(rows) {

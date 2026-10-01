@@ -1,5 +1,6 @@
 import { validateSettings, formatNaira } from './calc.js';
 import { processWorkbook, summarize, previewSheet } from './sheet.js';
+import { patchXlsx } from './patch.js';
 
 const $ = (id) => document.getElementById(id);
 const show = (el, on = true) => { el.hidden = !on; };
@@ -8,7 +9,7 @@ const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<
 const nextPaint = () => new Promise((res) => requestAnimationFrame(() => setTimeout(res, 30)));
 const wait = (ms) => new Promise((res) => setTimeout(res, ms));
 
-let buffer = null, lastWb = null, hasFile = false;
+let buffer = null, lastWb = null, lastOut = null, hasFile = false, isXlsx = true;
 let results = [], filtered = [], page = 0, showGross = false;
 
 const readWorkbook = (buf) => XLSX.read(buf, { type: 'array', cellNF: true, cellStyles: true, cellDates: false });
@@ -61,6 +62,7 @@ async function loadFile(f) {
   show($('results'), false); show($('preview'), false);
   hasFile = false; $('calc').disabled = true; setStep(1);
   if (!/\.(xlsx|xls)$/i.test(f.name)) { setDrop('error', { name: f.name, msg: 'Unsupported file type. Please upload an .xlsx or .xls file.' }); return; }
+  isXlsx = /\.xlsx$/i.test(f.name);
   setDrop('reading', { name: f.name });
   await nextPaint();
   try {
@@ -74,7 +76,7 @@ async function loadFile(f) {
     hasFile = true;
     const n = probe.detected;
     setDrop('done', { name: f.name, meta: `${fmtSize(f.size)}, ${n.toLocaleString()} loan record${n === 1 ? '' : 's'} detected in "${probe.sheetName}"` });
-    show($('fileTenorWrap'), probe.hasTenorColumn);
+    show($('fileTenorRow'), probe.hasTenorColumn);
     $('fileTenor').checked = true; syncTenure();
     $('previewTable').tHead.innerHTML = '<tr>' + pv.headers.map((h) => `<th>${esc(h)}</th>`).join('') + '</tr>';
     $('previewTable').tBodies[0].innerHTML = pv.rows.map((r) => '<tr>' + r.map((v) => `<td>${esc(v)}</td>`).join('') + '</tr>').join('');
@@ -89,7 +91,7 @@ async function loadFile(f) {
 }
 
 /* ---------- settings ---------- */
-const syncTenure = () => { $('tenure').disabled = $('auto').checked || (!$('fileTenorWrap').hidden && $('fileTenor').checked); };
+const syncTenure = () => { $('tenure').disabled = $('auto').checked || (!$('fileTenorRow').hidden && $('fileTenor').checked); };
 $('auto').onchange = syncTenure;
 $('fileTenor').onchange = syncTenure;
 
@@ -97,7 +99,7 @@ $('calc').onclick = async () => {
   fail($('settingsError'), ''); fail($('error'), '');
   const rate = parseFloat($('rate').value), tenure = Number($('tenure').value), auto = $('auto').checked;
   const deduction = parseFloat($('deduction').value);
-  const useFileTenor = !$('fileTenorWrap').hidden && $('fileTenor').checked;
+  const useFileTenor = !$('fileTenorRow').hidden && $('fileTenor').checked;
   const err = validateSettings(rate, tenure, auto, deduction);
   if (err) { fail($('settingsError'), err); return; }
   const btn = $('calc'); btn.disabled = true; setStep(3);
@@ -106,7 +108,9 @@ $('calc').onclick = async () => {
   try {
     lastWb = readWorkbook(buffer); // fresh copy every run
     const out = processWorkbook(XLSX, lastWb, { rate, tenure, autoTenure: auto, deduction, useFileTenor, extraColumns: $('extra').checked });
+    lastOut = out;
     render(out);
+    show($('xlsNote'), !isXlsx);
     setStep(5);
   } catch (e) { fail($('error'), e.message); show($('results'), false); setStep(2); }
   btn.innerHTML = label; btn.disabled = false;
@@ -161,9 +165,24 @@ $('pageSize').onchange = () => { page = 0; drawPage(); };
 $('prev').onclick = () => { page--; drawPage(); };
 $('next').onclick = () => { page++; drawPage(); };
 
-$('download').onclick = () => {
+function save(blobParts, name, type) {
+  const url = URL.createObjectURL(new Blob(blobParts, { type }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+$('download').onclick = async () => {
   const d = new Date(), p = (n) => String(n).padStart(2, '0');
-  XLSX.writeFile(lastWb, `loan_calculated_${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.xlsx`, { bookType: 'xlsx', cellStyles: true });
+  const name = `loan_calculated_${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.xlsx`;
+  const xlsxType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+  fail($('error'), '');
+  if (isXlsx) {
+    try { // .xlsx: change only the calculated cells inside the original file, so all formatting survives
+      save([await patchXlsx(JSZip, buffer, lastOut.sheetName, lastOut.edits)], name, xlsxType);
+      return;
+    } catch (e) { console.warn('In-place save failed, using standard export', e); }
+  }
+  XLSX.writeFile(lastWb, name, { bookType: 'xlsx', cellStyles: true });
 };
 
 /* ---------- sample files ---------- */

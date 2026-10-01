@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Loan Flat Interest Calculator</title>
 <meta name="description" content="Upload an Excel file of loans, calculate monthly flat-rate interest and repayments, and download the updated spreadsheet. Runs entirely in your browser.">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="apple-touch-icon" href="favicon.svg">
+<meta name="theme-color" content="#1b4f8a">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -112,12 +115,12 @@
 
     <aside class="card side" id="settingsCard">
       <h2>Loan settings</h2>
-      <label>Monthly flat interest rate (%)<input id="rate" type="number" step="0.01" min="0" max="100" value="5.00" inputmode="decimal"><span class="hint">Charged every month on the original principal, not the reducing balance.</span></label>
-      <label>Loan tenure (months)<input id="tenure" type="number" step="1" min="1" value="12" inputmode="numeric"><span class="hint">How many months the loan runs. Used for every row unless an option below says otherwise.</span></label>
-      <label id="fileTenorWrap" class="check" hidden><input id="fileTenor" type="checkbox" checked> Use each row's Tenor from the file (blank rows use the tenure above)</label>
-      <label class="check"><input id="auto" type="checkbox"> Auto tenure from Start Date and End date</label>
-      <label class="check"><input id="extra" type="checkbox"> Also add Monthly Flat Rate, Monthly Interest and Loan Tenure columns to the downloaded file (off keeps your sheet exactly as it is)</label>
-      <label>Bank deduction (%)<input id="deduction" type="number" step="0.01" min="0" max="99" value="4" inputmode="decimal"><span class="hint">Only used when principal is worked out from Bank payment (4% means divide by 0.96).</span></label>
+      <label><span class="lt">Monthly flat interest rate (%) <span class="tip" tabindex="0" role="img" aria-label="Percentage charged on the original principal every month. 5 means 5% a month, the same amount every month." data-tip="Percentage charged on the original principal every month. 5 means 5% a month, the same amount every month."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="rate" type="number" step="0.01" min="0" max="100" value="5.00" inputmode="decimal"><span class="hint">Charged every month on the original principal, not the reducing balance.</span></label>
+      <label><span class="lt">Loan tenure (months) <span class="tip" tabindex="0" role="img" aria-label="Number of months the loan runs. Total interest = monthly interest x tenure." data-tip="Number of months the loan runs. Total interest = monthly interest x tenure."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="tenure" type="number" step="1" min="1" value="12" inputmode="numeric"><span class="hint">How many months the loan runs. Used for every row unless an option below says otherwise.</span></label>
+      <div class="opt-row" id="fileTenorRow" hidden><label id="fileTenorWrap" class="check"><input id="fileTenor" type="checkbox" checked> Use each row's Tenor from the file (blank rows use the tenure above)</label><span class="tip" tabindex="0" role="img" aria-label="Reads the Tenor column on each row, so different clients can have different tenors. A blank Tenor uses the tenure above." data-tip="Reads the Tenor column on each row, so different clients can have different tenors. A blank Tenor uses the tenure above."><svg class="ic"><use href="#i-info"/></svg></span></div>
+      <div class="opt-row"><label class="check"><input id="auto" type="checkbox"> Auto tenure from Start Date and End date</label><span class="tip" tabindex="0" role="img" aria-label="Works the tenure out from each row's Start Date and End date instead. Needs both columns in your file." data-tip="Works the tenure out from each row's Start Date and End date instead. Needs both columns in your file."><svg class="ic"><use href="#i-info"/></svg></span></div>
+      <div class="opt-row"><label class="check"><input id="extra" type="checkbox"> Also add Monthly Flat Rate, Monthly Interest and Loan Tenure columns to the downloaded file (off keeps your sheet exactly as it is)</label><span class="tip" tabindex="0" role="img" aria-label="Adds three more columns at the end of the file. Leave it off to get your sheet back exactly as you uploaded it, with only the empty calculation cells filled." data-tip="Adds three more columns at the end of the file. Leave it off to get your sheet back exactly as you uploaded it, with only the empty calculation cells filled."><svg class="ic"><use href="#i-info"/></svg></span></div>
+      <label><span class="lt">Bank deduction (%) <span class="tip" tabindex="0" role="img" aria-label="Bank payments arrive after this deduction. Gross bank payment = Bank payment / (1 - deduction). 4% means divide by 0.96." data-tip="Bank payments arrive after this deduction. Gross bank payment = Bank payment / (1 - deduction). 4% means divide by 0.96."><svg class="ic"><use href="#i-info"/></svg></span></span><input id="deduction" type="number" step="0.01" min="0" max="99" value="4" inputmode="decimal"><span class="hint">Only used when principal is worked out from Bank payment (4% means divide by 0.96).</span></label>
       <p class="formula">Interest = Principal x Rate x Tenure<br>Total = Principal + Interest<br>Monthly = Total / Tenure</p>
       <p id="settingsError" class="error" hidden></p>
       <button id="calc" class="btn block" disabled><svg class="ic"><use href="#i-calc"/></svg> Calculate Loans</button>
@@ -148,12 +151,13 @@
       </div>
     </section>
     <section class="card dl">
-      <div><h2>Download</h2><p class="muted">The updated workbook keeps your original columns, and the calculated values are real numbers you can still use in Excel.</p></div>
+      <div><h2>Download</h2><p class="muted">Your file comes back exactly as uploaded: only the cells being calculated are changed, and the new values are real numbers you can still use in Excel.</p><p id="xlsNote" class="muted" hidden>Old .xls files are saved as .xlsx and lose cell colours and fonts. Upload an .xlsx to keep the formatting exactly.</p></div>
       <button id="download" class="btn"><svg class="ic"><use href="#i-download"/></svg> Download Updated Excel</button>
     </section>
   </div>
 </main>
 <script src="vendor/xlsx.full.min.js"></script>
+<script src="vendor/jszip.min.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>

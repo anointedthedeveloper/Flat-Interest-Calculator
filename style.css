@@ -151,3 +151,12 @@ tbody tr:last-child td{border-bottom:0}
 .ex th.req{background:#dcebfb;color:var(--brand-d)}
 label .hint{margin-top:3px}
 [hidden]{display:none!important}.guide p{font-size:14px}
+.wrap{max-width:1500px;padding:0 clamp(10px,1.6vw,24px)}
+.opt-row{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:14px}
+.opt-row .check{margin:0;flex:1}
+.lt{display:flex;align-items:center;gap:6px}
+.tip{position:relative;display:inline-flex;color:var(--muted);cursor:help;border-radius:50%;flex:none}
+.tip:hover,.tip:focus{color:var(--brand)}
+.tip::after{content:attr(data-tip);position:absolute;right:-6px;bottom:calc(100% + 8px);width:250px;max-width:70vw;padding:9px 11px;border-radius:8px;background:#16202e;color:#fff;font:400 12.5px/1.45 system-ui,sans-serif;text-transform:none;letter-spacing:0;white-space:normal;text-align:left;opacity:0;transform:translateY(4px);pointer-events:none;transition:opacity .15s,transform .15s;z-index:20;box-shadow:0 6px 20px rgba(0,0,0,.2)}
+.tip:hover::after,.tip:focus::after{opacity:1;transform:none}
+.lt .tip::after{left:-8px;right:auto}
