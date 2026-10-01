@@ -23,17 +23,17 @@
     <h2><span class="step">1</span> Upload Excel</h2>
     <details class="guide" open>
       <summary><svg class="ic"><use href="#i-info"/></svg> What should I upload?</summary>
-      <p>An Excel file (<b>.xlsx</b> or <b>.xls</b>) with one row per loan and a header row. Only <b>New Principal</b> is required; the rest is kept as-is.</p>
+      <p>An Excel file (<b>.xlsx</b> or <b>.xls</b>) with one row per loan and a header row. Two layouts are supported:</p>
       <div class="tablewrap small"><table>
-        <thead><tr><th>Column</th><th>Needed?</th><th>Used for</th></tr></thead>
+        <thead><tr><th>Layout</th><th>Columns</th><th>How the principal is found</th></tr></thead>
         <tbody>
-          <tr><td>New Principal</td><td><b>Required</b></td><td>The loan amount interest is calculated on (numbers only, not negative)</td></tr>
-          <tr><td>Interest, Gross Loan, Monthly repayment</td><td>Optional</td><td>Filled in or updated with the calculated values</td></tr>
-          <tr><td>Start Date, End date</td><td>Optional</td><td>Only needed for Auto tenure</td></tr>
-          <tr><td>Name / Borrower, Status, Payment Date, etc.</td><td>Optional</td><td>Kept untouched; Name and Status appear in the preview</td></tr>
+          <tr><td><b>A. New Principal</b></td><td>New Principal (required)</td><td>Read straight from the New Principal column</td></tr>
+          <tr><td><b>B. Bank payment</b></td><td>Bank payment (required), Balance B/F, Tenor</td><td>Principal = Balance B/F + Bank payment &divide; 0.96. Cells holding a placeholder such as "XXXX" are filled in</td></tr>
         </tbody>
       </table></div>
-      <button type="button" id="sample" class="link"><svg class="ic"><use href="#i-download"/></svg> Download a sample Excel file</button>
+      <p class="muted">Other columns (Name, Ministry, IPPIS NO, Payment Date, Status, Start/End date and so on) are kept untouched. The Interest / Total Interest, Gross Loan / Total debt and Monthly repayment / monthly EMI columns are filled in with the results.</p>
+      <button type="button" id="sample" class="link"><svg class="ic"><use href="#i-download"/></svg> Sample: New Principal layout</button>
+      <button type="button" id="sample2" class="link"><svg class="ic"><use href="#i-download"/></svg> Sample: Bank payment layout</button>
     </details>
     <div id="drop" class="drop" tabindex="0" role="button" aria-label="Drop Excel file here or press Enter to choose">
       <svg class="big"><use href="#i-upload"/></svg>
@@ -54,6 +54,10 @@
     <div class="grid2">
       <label>Monthly Flat Interest Rate (%)<input id="rate" type="number" step="0.01" min="0" max="100" value="5.00"></label>
       <label>Loan Tenure (months)<input id="tenure" type="number" step="1" min="1" value="12"></label>
+    </div>
+    <div class="grid2 opt">
+      <label>Bank deduction (%) <span class="muted">used when principal is worked out from Bank payment</span><input id="deduction" type="number" step="0.01" min="0" max="99" value="4"></label>
+      <label id="fileTenorWrap" class="check" hidden><input id="fileTenor" type="checkbox" checked> Use each row's Tenor from the file (falls back to the tenure above when blank)</label>
     </div>
     <label class="check"><input id="auto" type="checkbox"> Auto tenure from Start Date / End Date (per row)</label>
     <p class="muted">Interest = Principal × Rate × Tenure. Total Repayment = Principal + Interest. Monthly Repayment = Total ÷ Tenure.</p>

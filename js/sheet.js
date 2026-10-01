@@ -1,36 +1,33 @@
-import { calculateLoan, parseAmount, monthsBetween } from './calc.js';
+import { calculateLoan, parseAmount, monthsBetween, grossFromBank } from './calc.js';
 
 const norm = (s) => String(s ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
 const MONEY_FMT = '#,##0.00';
 
-// Header aliases (normalised). First match wins.
-const isPrincipal = (h) => /^new?princ(i|a)p(a|l|e)l?(amount)?$/.test(h) || /^newprin/.test(h);
+// Header aliases (normalised: lowercase, letters and digits only).
 const FIND = {
-  principal: (h) => isPrincipal(h),
-  fallbackPrincipal: (h) => h === 'principal' || h === 'principle',
+  principal: (h) => /^newprin/.test(h),
+  fallbackPrincipal: (h) => /^princip/.test(h),
+  bank: (h) => /^bankpay/.test(h),
+  grossBank: (h) => /^grossbankpay/.test(h),
+  balance: (h) => /^(balance|bal)(bf|broughtforward|restruc\w*)?$/.test(h),
   interest: (h) => h === 'interest' || h === 'totalinterest',
-  gross: (h) => h === 'grossloan' || h === 'totalrepayment' || h === 'grossloantotalrepayment',
-  monthly: (h) => /^monthlyrepay/.test(h),
+  gross: (h) => h === 'grossloan' || h === 'totalrepayment' || /^totaldebt/.test(h) || h === 'grossloantotalrepayment',
+  monthly: (h) => /^monthlyrepay/.test(h) || /^monthlyemi/.test(h) || h === 'emi',
   rate: (h) => /^monthlyflatrate|^flatrate|^interestrate$/.test(h),
   monthlyInterest: (h) => h === 'monthlyinterest',
-  tenure: (h) => h === 'loantenure' || h === 'tenure',
+  tenure: (h) => h === 'loantenure' || h === 'tenure' || h === 'tenor',
   start: (h) => h === 'startdate' || h === 'start',
   end: (h) => h === 'enddate' || h === 'end',
   status: (h) => h === 'status',
-  name: (h) => /^(borrower|customer|client|member|staff)?(name|fullname)$/.test(h) || h === 'borrower' || h === 'customer',
+  name: (h) => /^(borrower|customer|client|clients|member|staff)?(name|fullname)$/.test(h) || h === 'borrower' || h === 'customer',
 };
+const isAnchor = (h) => FIND.principal(h) || FIND.fallbackPrincipal(h) || FIND.bank(h);
 
 function findHeaderRow(XLSX, ws, range) {
   for (let r = range.s.r; r <= Math.min(range.e.r, range.s.r + 15); r++) {
     for (let c = range.s.c; c <= range.e.c; c++) {
       const cell = ws[XLSX.utils.encode_cell({ r, c })];
-      if (cell && FIND.principal(norm(cell.v))) return r;
-    }
-  }
-  for (let r = range.s.r; r <= Math.min(range.e.r, range.s.r + 15); r++) {
-    for (let c = range.s.c; c <= range.e.c; c++) {
-      const cell = ws[XLSX.utils.encode_cell({ r, c })];
-      if (cell && FIND.fallbackPrincipal(norm(cell.v))) return r;
+      if (cell && typeof cell.v === 'string' && isAnchor(norm(cell.v))) return r;
     }
   }
   return -1;
@@ -56,7 +53,7 @@ export function processWorkbook(XLSX, wb, settings) {
   if (!sheetName) {
     const first = wb.Sheets[wb.SheetNames[0]];
     if (!first || !first['!ref']) throw new Error('The Excel file is empty.');
-    throw new Error('Could not find a "New Principal" column. Please make sure your sheet has a header named "New Principal".');
+    throw new Error('Could not find a "New Principal" or "Bank payment" column. Please make sure your sheet has a header row containing one of them.');
   }
   const ws = wb.Sheets[sheetName];
   const range = XLSX.utils.decode_range(ws['!ref']);
@@ -69,14 +66,18 @@ export function processWorkbook(XLSX, wb, settings) {
     const h = norm(cell?.v);
     headers[c] = cell?.v;
     if (!h) continue;
+    if (FIND.principal(h)) { if (cols.principal === undefined) cols.principal = c; continue; }
+    if (FIND.fallbackPrincipal(h)) { if (cols.fallback === undefined) cols.fallback = c; continue; }
     for (const key of Object.keys(FIND)) {
       if (key === 'principal' || key === 'fallbackPrincipal') continue;
-      if (cols[key] === undefined && FIND[key](h)) cols[key] = c;
+      if (cols[key] === undefined && FIND[key](h)) { cols[key] = c; break; }
     }
-    if (cols.principal === undefined && FIND.principal(h)) cols.principal = c;
-    else if (cols.fallback === undefined && FIND.fallbackPrincipal(h)) cols.fallback = c;
   }
   if (cols.principal === undefined) cols.principal = cols.fallback;
+  if (cols.principal === undefined && cols.bank === undefined) throw new Error('Could not find a "New Principal" or "Bank payment" column.');
+  const hasTenorColumn = cols.tenure !== undefined;
+  const deduction = settings.deduction ?? 4;
+  // Principal column may be missing when it is derived from Bank payment: create it.
 
   // Add missing output columns at the end (existing columns are updated in place).
   let nextCol = range.e.c + 1;
@@ -85,6 +86,7 @@ export function processWorkbook(XLSX, wb, settings) {
     cols[key] = nextCol++;
     ws[XLSX.utils.encode_cell({ r: hr, c: cols[key] })] = { t: 's', v: title };
   };
+  addCol('principal', 'Principal');
   addCol('rate', 'Monthly Flat Rate');
   addCol('monthlyInterest', 'Monthly Interest');
   addCol('tenure', 'Loan Tenure');
@@ -117,14 +119,40 @@ export function processWorkbook(XLSX, wb, settings) {
     const status = statusCell && statusCell.w ? statusCell.w : statusCell?.v ?? '';
     const fail = (reason) => invalid.push({ row: r + 1, label, reason });
 
+    // Principal: use the sheet's value; if it is blank/placeholder (e.g. "XXXX") derive it from
+    // Balance B/F + Bank payment / (1 - deduction).
     const pc = cellAt('principal');
-    if (!pc || pc.v === undefined || String(pc.v).trim() === '') { fail('New Principal is empty.'); continue; }
-    const principal = parseAmount(pc.v);
-    if (Number.isNaN(principal)) { fail(`New Principal "${pc.v}" is not a valid number.`); continue; }
-    if (principal < 0) { fail('New Principal is negative.'); continue; }
-    if (principal === 0) { fail('New Principal is zero.'); continue; }
+    const pEmpty = !pc || pc.v === undefined || String(pc.v).trim() === '';
+    let principal = pEmpty ? NaN : parseAmount(pc.v);
+    let derived = false, gross = null;
+    if (Number.isNaN(principal) && cols.bank !== undefined) {
+      const bc = cellAt('bank');
+      const bank = bc ? parseAmount(bc.v) : NaN;
+      if (Number.isFinite(bank)) {
+        if (bank < 0) { fail('Bank payment is negative.'); continue; }
+        const bf = cellAt('balance');
+        const bal = !bf || bf.v === undefined || String(bf.v).trim() === '' ? 0 : parseAmount(bf.v);
+        if (Number.isNaN(bal)) { fail(`Balance B/F "${bf.v}" is not a valid number.`); continue; }
+        gross = grossFromBank(bank, deduction);
+        principal = Math.round((bal + gross + Number.EPSILON) * 100) / 100;
+        derived = true;
+      }
+    }
+    if (!derived) {
+      if (pEmpty) { fail(cols.bank !== undefined ? 'No principal and no Bank payment to work it out from.' : 'New Principal is empty.'); continue; }
+      if (Number.isNaN(principal)) { fail(`New Principal "${pc.v}" is not a valid number.`); continue; }
+    }
+    if (principal < 0) { fail('Principal is negative.'); continue; }
+    if (principal === 0) { fail('Principal is zero.'); continue; }
 
     let tenure = settings.tenure;
+    if (settings.useFileTenor && hasTenorColumn) {
+      const tc = cellAt('tenure');
+      if (tc && tc.v !== undefined && String(tc.v).trim() !== '') {
+        tenure = parseAmount(tc.v);
+        if (!Number.isInteger(tenure) || tenure < 1) { fail(`Tenor "${tc.v}" is not a valid number of months.`); continue; }
+      }
+    }
     if (settings.autoTenure) {
       const s = cellDateParts(XLSX, cellAt('start')), e = cellDateParts(XLSX, cellAt('end'));
       tenure = s && e ? monthsBetween(s, e) : NaN;
@@ -132,19 +160,20 @@ export function processWorkbook(XLSX, wb, settings) {
     }
 
     const res = calculateLoan(principal, settings.rate, tenure);
-    setNum(r, 'principal', res.principal, pc.z && pc.z !== 'General' ? pc.z : MONEY_FMT);
+    if (derived && cols.grossBank !== undefined) setNum(r, 'grossBank', gross, MONEY_FMT);
+    setNum(r, 'principal', res.principal, MONEY_FMT);
     setNum(r, 'rate', res.rate / 100, '0.00%');
     setNum(r, 'monthlyInterest', res.monthlyInterest, MONEY_FMT);
     setNum(r, 'tenure', res.tenure, '0');
     setNum(r, 'interest', res.totalInterest, MONEY_FMT);
     setNum(r, 'gross', res.totalRepayment, MONEY_FMT);
     setNum(r, 'monthly', res.monthlyRepayment, MONEY_FMT);
-    rows.push({ row: r + 1, label, status, ...res });
+    rows.push({ row: r + 1, label, status, derived, ...res });
   }
 
   ws['!ref'] = XLSX.utils.encode_range({ s: range.s, e: { r: range.e.r, c: Math.max(range.e.c, nextCol - 1) } });
   if (ws['!cols']) for (let c = range.e.c + 1; c < nextCol; c++) ws['!cols'][c] = { wch: 18 };
-  return { sheetName, detected, rows, invalid, usedFallbackPrincipal: cols.principal === cols.fallback && cols.fallback !== undefined };
+  return { sheetName, detected, rows, invalid, hasTenorColumn, derivedCount: rows.filter((r) => r.derived).length };
 }
 
 export function summarize(rows) {

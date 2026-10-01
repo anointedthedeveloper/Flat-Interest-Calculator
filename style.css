@@ -56,3 +56,4 @@ h3{font-size:14px;margin:16px 0 8px}h3 .muted{font-weight:400}
 #preview .tablewrap{max-height:280px}
 .btn{display:inline-flex;align-items:center;gap:8px}
 .btn svg{width:18px;height:18px}
+.opt{margin-top:12px;align-items:end}.opt .muted{font-weight:400;font-size:12px;display:block}.opt .check{margin:0 0 10px}

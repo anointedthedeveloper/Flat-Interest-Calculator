@@ -30,10 +30,12 @@ async function loadFile(f) {
     buffer = await f.arrayBuffer();
     const wb = readWorkbook(buffer);
     const pv = previewSheet(XLSX, wb);
-    const probe = processWorkbook(XLSX, readWorkbook(buffer), { rate: 5, tenure: 12 });
+    const probe = processWorkbook(XLSX, readWorkbook(buffer), { rate: 5, tenure: 12, deduction: 4 });
     file = f;
+    show($('fileTenorWrap'), probe.hasTenorColumn);
+    $('fileTenor').checked = true; syncTenure();
     const kb = f.size < 1024 * 1024 ? Math.max(1, Math.round(f.size / 1024)) + ' KB' : (f.size / 1048576).toFixed(1) + ' MB';
-    setStatus('ok', `<b>${esc(f.name)}</b> uploaded (${kb})<small>${probe.detected} loan record${probe.detected === 1 ? '' : 's'} detected in sheet "${esc(probe.sheetName)}"${probe.usedFallbackPrincipal ? ' — using the "Principal" column' : ''}. Ready to calculate.</small>`);
+    setStatus('ok', `<b>${esc(f.name)}</b> uploaded (${kb})<small>${probe.detected} loan record${probe.detected === 1 ? '' : 's'} detected in sheet "${esc(probe.sheetName)}". Ready to calculate.</small>`);
     $('previewTable').tHead.innerHTML = '<tr>' + pv.headers.map((h) => `<th>${esc(h)}</th>`).join('') + '</tr>';
     $('previewTable').tBodies[0].innerHTML = pv.rows.map((r) => '<tr>' + r.map((v) => `<td>${esc(v)}</td>`).join('') + '</tr>').join('');
     $('previewNote').textContent = `(showing ${pv.rows.length} of ${pv.total} rows)`;
@@ -52,16 +54,18 @@ const drop = $('drop');
 drop.addEventListener('drop', (e) => e.dataTransfer.files[0] && loadFile(e.dataTransfer.files[0]));
 drop.addEventListener('dragleave', () => { if (!file) show($('status'), false); });
 drop.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('file').click(); } });
-$('auto').onchange = () => { $('tenure').disabled = $('auto').checked; };
+const syncTenure = () => { $('tenure').disabled = $('auto').checked; };
+$('auto').onchange = syncTenure;
 
 $('calc').onclick = () => {
   fail($('settingsError'), ''); fail($('error'), '');
   const rate = parseFloat($('rate').value), tenure = Number($('tenure').value), auto = $('auto').checked;
-  const err = validateSettings(rate, tenure, auto);
+  const deduction = parseFloat($('deduction').value);
+  const err = validateSettings(rate, tenure, auto, deduction);
   if (err) { fail($('settingsError'), err); return; }
   try {
     lastWb = readWorkbook(buffer); // fresh copy each run
-    const out = processWorkbook(XLSX, lastWb, { rate, tenure, autoTenure: auto });
+    const out = processWorkbook(XLSX, lastWb, { rate, tenure, autoTenure: auto, deduction, useFileTenor: !$('fileTenorWrap').hidden && $('fileTenor').checked });
     render(out);
   } catch (e) { fail($('error'), e.message); show($('results'), false); }
 };
@@ -92,15 +96,21 @@ $('download').onclick = () => {
   XLSX.writeFile(lastWb, `loan_calculated_${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}.xlsx`, { bookType: 'xlsx', cellStyles: true });
 };
 
-$('sample').onclick = () => {
-  const H = ['Payment Date', 'Bal. restruc', 'Bank payment', 'Gross bank paym', 'New Principal', 'Interest', 'Gross Loan', 'Monthly repayment', 'Start Date', 'End date', 'Status'];
-  const D = (y, m, d) => new Date(Date.UTC(y, m - 1, d));
-  const ws = XLSX.utils.aoa_to_sheet([H,
-    [D(2026, 9, 1), null, 144000, 150000, 150000, null, null, null, D(2026, 10, 1), D(2027, 9, 30), 'RENEWAL'],
-    [D(2026, 9, 4), 165375, 144000, 150000, 315375, null, null, null, D(2026, 10, 1), D(2027, 9, 30), 'TOP UP'],
-  ], { cellDates: true });
-  ws['!cols'] = H.map(() => ({ wch: 16 }));
+const downloadSample = (name, aoa, widths) => {
+  const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
+  ws['!cols'] = widths.map((w) => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Loans');
-  XLSX.writeFile(wb, 'sample_loans.xlsx');
+  XLSX.writeFile(wb, name);
 };
+const D = (y, m, d) => new Date(Date.UTC(y, m - 1, d));
+$('sample').onclick = () => downloadSample('sample_new_principal.xlsx', [
+  ['Payment Date', 'Bal. restruc', 'Bank payment', 'Gross bank paym', 'New Principal', 'Interest', 'Gross Loan', 'Monthly repayment', 'Start Date', 'End date', 'Status'],
+  [D(2026, 9, 1), null, 144000, 150000, 150000, null, null, null, D(2026, 10, 1), D(2027, 9, 30), 'RENEWAL'],
+  [D(2026, 9, 4), 165375, 144000, 150000, 315375, null, null, null, D(2026, 10, 1), D(2027, 9, 30), 'TOP UP'],
+], Array(11).fill(16));
+$('sample2').onclick = () => downloadSample('sample_bank_payment.xlsx', [
+  ['s/n', 'Clients Name', 'IPPIS NO', 'Ministry', 'Tenor', 'Payment Date', 'Balance B/F', 'Bank payment', 'Gross bank payment (Bank payment / 0.96)', 'Principal (Balance B/F + Gross)', 'Total Interest', 'Total debt', 'monthly EMI'],
+  [1, 'AUDU DANJUMA', 86679, 'OSGF', 12, D(2026, 9, 1), 0, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'],
+  [2, 'OMOLORO OLUWASEYI', 437602, 'OSGF', 12, D(2026, 9, 4), 165375, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'],
+], [6, 28, 12, 14, 8, 14, 14, 14, 24, 24, 16, 16, 16]);

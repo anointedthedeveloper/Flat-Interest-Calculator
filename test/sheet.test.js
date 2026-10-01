@@ -42,3 +42,24 @@ test('auto tenure', () => {
   const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, autoTenure: true });
   assert.equal(out.rows[0].tenure, 12);
 });
+
+test('bank payment layout derives principal and fills placeholders', () => {
+  const wb = build([
+    ['s/n', 'Clients Name', 'Tenor', 'Balance B/F', 'Bank payment', 'Gross bank payment (column G/0.96)', 'Principal (column F + Column H)', 'Total Interest ', 'Total debt (Columns I + J)', 'monthly EMI'],
+    [1, 'AUDU', 12, 0, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'],
+    [2, 'OMOLORO', 12, 165375, 144000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'],
+    [3, 'BAD', 'x', 0, 100000, 'XXXX', 'XXXX', 'XXXX', 'XXXX', 'XXXX'],
+  ]);
+  const out = processWorkbook(XLSX, wb, { rate: 5, tenure: 12, deduction: 4, useFileTenor: true });
+  assert.equal(out.rows.length, 2);
+  assert.equal(out.invalid.length, 1);
+  const rows = XLSX.utils.sheet_to_json(wb.Sheets.Loans);
+  assert.equal(rows[0]['Principal (column F + Column H)'], 150000);
+  assert.equal(rows[0]['Total Interest '], 90000);
+  assert.equal(rows[0]['monthly EMI'], 20000);
+  assert.equal(rows[1]['Gross bank payment (column G/0.96)'], 150000);
+  assert.equal(rows[1]['Principal (column F + Column H)'], 315375);
+  assert.equal(rows[1]['Total debt (Columns I + J)'], 504600);
+  assert.equal(rows[1]['monthly EMI'], 42050);
+  assert.equal(Object.keys(rows[0]).filter((k) => /^tenor|tenure/i.test(k)).length, 1);
+});
