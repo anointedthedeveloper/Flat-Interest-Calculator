@@ -33,13 +33,32 @@ function findHeaderRow(XLSX, ws, range) {
   return -1;
 }
 
+const hasHeader = (XLSX, ws) => !!ws['!ref'] && findHeaderRow(XLSX, ws, XLSX.utils.decode_range(ws['!ref'])) >= 0;
+
 /**
- * Calculates every loan row of the first sheet that has a "New Principal" column and
+ * Workbooks often hold one tab per month. Pick the tab that still needs calculating (most loan rows with
+ * a blank Interest); if none do, the LAST tab with loans (the newest month). Falls back to the first
+ * tab with a header so the usual "missing column" errors still make sense.
+ */
+export function pickSheet(XLSX, wb) {
+  const withHeader = wb.SheetNames.filter((n) => hasHeader(XLSX, wb.Sheets[n]));
+  let best, bestPending = -1;
+  for (const n of withHeader) {
+    let out;
+    try { out = processWorkbook(XLSX, wb, { rate: 5, deduction: 4, dryRun: true, sheetName: n }); } catch { continue; }
+    if (out.rows.length === 0) continue;
+    if (out.pending >= bestPending) { best = n; bestPending = out.pending; } // ties go to the later tab
+  }
+  return best ?? withHeader[0];
+}
+
+/**
+ * Calculates every loan row of the chosen sheet that has a "New Principal" column and
  * writes results back into that SAME worksheet (original columns/data/formats preserved).
  * settings: { rate: number(%), deduction: number(%) }. Tenor is always read from the file.
  */
 export function processWorkbook(XLSX, wb, settings) {
-  const sheetName = wb.SheetNames.find((n) => wb.Sheets[n]['!ref'] && findHeaderRow(XLSX, wb.Sheets[n], XLSX.utils.decode_range(wb.Sheets[n]['!ref'])) >= 0);
+  const sheetName = settings.sheetName || pickSheet(XLSX, wb);
   if (!sheetName) {
     const first = wb.Sheets[wb.SheetNames[0]];
     if (!first || !first['!ref']) throw new Error('The Excel file is empty.');
@@ -99,7 +118,7 @@ export function processWorkbook(XLSX, wb, settings) {
   };
 
   const rows = [], invalid = [];
-  let detected = 0, skipped = 0;
+  let detected = 0, skipped = 0, pending = 0; // pending: loan rows whose Interest is still blank
   for (let r = hr + 1; r <= range.e.r; r++) {
     let hasData = false;
     for (let c = range.s.c; c <= range.e.c; c++) {
@@ -109,9 +128,22 @@ export function processWorkbook(XLSX, wb, settings) {
     if (!hasData) continue; // empty row
     const cellAt = (key) => (cols[key] === undefined ? undefined : ws[XLSX.utils.encode_cell({ r, c: cols[key] })]);
     const blank = (key) => { const x = cellAt(key); return !x || x.v === undefined || String(x.v).trim() === ''; };
-    // A row with no principal, bank payment, balance or tenor is a label/note, not a loan: leave it alone.
-    if (blank('principal') && blank('bank') && blank('balance') && blank('tenure')) { skipped++; continue; }
+    // Blank, or a 0 that a template formula (e.g. =H21+J21) produced in an unused row.
+    const empty = (key) => { const x = cellAt(key); return blank(key) || (x.t === 'n' && x.v === 0); };
+    // A row with no principal, bank payment, balance or tenor is a label/note/unused template row, not a loan.
+    if (empty('principal') && empty('bank') && empty('balance') && empty('tenure')) { skipped++; continue; }
+    // TOTAL / SUBTOTAL lines and repeated header rows are not loans either.
+    let isTotal = false, isHeaderRepeat = false;
+    for (let c = range.s.c; c <= range.e.c; c++) {
+      const x = ws[XLSX.utils.encode_cell({ r, c })];
+      if (!x || x.t !== 's') continue;
+      const t = norm(x.v);
+      if (/^(grand|sub)?totals?$/.test(t)) isTotal = true;
+      if (t && t === norm(headers[c]) && (c === cols.principal || c === cols.bank || c === cols.tenure)) isHeaderRepeat = true;
+    }
+    if (isTotal || isHeaderRepeat) { skipped++; continue; }
     detected++;
+    const wasPending = blank('interest');
     const nameCell = cellAt('name');
     const label = nameCell && nameCell.v ? String(nameCell.v) : `Row ${r + 1}`;
     const statusCell = cellAt('status');
@@ -161,6 +193,7 @@ export function processWorkbook(XLSX, wb, settings) {
     setNum(r, 'interest', res.totalInterest, MONEY_FMT);
     setNum(r, 'gross', res.totalRepayment, MONEY_FMT);
     setNum(r, 'monthly', res.monthlyRepayment, MONEY_FMT);
+    if (wasPending) pending++;
     rows.push({ row: r + 1, label, status, derived, gross, ...res });
   }
 
@@ -173,7 +206,7 @@ export function processWorkbook(XLSX, wb, settings) {
   };
   const labels = { gross: label('grossBank', 'Gross Payment'), principal: label('principal', 'Principal'), interest: label('interest', 'Interest'),
     total: label('gross', 'Gross Loan'), monthly: label('monthly', 'EMI'), tenure: label('tenure', 'Tenor') };
-  return { sheetName, edits, widths, labels, detected, skipped, rows, invalid, hasTenorColumn, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
+  return { sheetName, pending, edits, widths, labels, detected, skipped, rows, invalid, hasTenorColumn, usesBank: cols.bank !== undefined, derivedCount: rows.filter((r) => r.derived).length };
 }
 
 export function summarize(rows) {
@@ -188,7 +221,7 @@ export function summarize(rows) {
 
 /** First rows of the detected sheet as display text, for the pre-calculation preview. */
 export function previewSheet(XLSX, wb, limit = 8) {
-  const name = wb.SheetNames.find((n) => wb.Sheets[n]['!ref']) || wb.SheetNames[0];
+  const name = pickSheet(XLSX, wb) || wb.SheetNames.find((n) => wb.Sheets[n]['!ref']) || wb.SheetNames[0];
   const ws = wb.Sheets[name];
   if (!ws || !ws['!ref']) return { headers: [], rows: [], total: 0 };
   const range = XLSX.utils.decode_range(ws['!ref']);

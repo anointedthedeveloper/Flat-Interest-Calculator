@@ -97,3 +97,26 @@ test('building layout: blank cells, different tenors, note rows skipped', () => 
   assert.equal(r[3]['Gross Loan (K+L)'], 570000); // 18 months
   assert.equal(r[3]['EMI'], 31666.67);
 });
+
+test('unused template rows (formulas giving 0), TOTAL rows and repeated headers are skipped, not errors', () => {
+  const wb = build([H,
+    [12, 144000, 150000, null, null, null, 'NEW'],
+    [null, null, 0, null, 0, null, null],            // template row: only a formula result of 0
+    ['Tenor', 'Bank payment', 'new principal'],      // repeated header row
+    [null, 999, 0, null, 0, null, 'TOTAL']]);        // TOTAL line has no tenor
+  wb.Sheets.Loans.F5 = { t: 's', v: 'TOTAL' };
+  const out = processWorkbook(XLSX, wb, S);
+  assert.equal(out.rows.length, 1);
+  assert.equal(out.invalid.length, 0);
+});
+test('picks the month tab that still needs calculating, else the newest tab', () => {
+  const mk = (names) => {
+    const wb = XLSX.utils.book_new();
+    for (const [n, aoa] of names) XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), n);
+    return XLSX.read(XLSX.write(wb, { type: 'array', bookType: 'xlsx' }), { type: 'array' });
+  };
+  const done = [H, [12, 144000, 150000, 90000, 240000, 20000, 'X']];
+  const todo = [H, [12, 144000, 150000, null, null, null, 'X']];
+  assert.equal(processWorkbook(XLSX, mk([['Sep', done], ['Oct', todo], ['Nov', done]]), S).sheetName, 'Oct');
+  assert.equal(processWorkbook(XLSX, mk([['Sep', done], ['Nov', done]]), S).sheetName, 'Nov');
+});
